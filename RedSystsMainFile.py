@@ -77,7 +77,11 @@ class appMainWindow(QtWidgets.QDialog, GUI_Window.Ui_MainWindow):
         
         self.pushButton_PathsLeftToRight.clicked.connect(self.effectOf_pushButton_PathsLeftToRight)
         self.pushButton_PathsRightToLeft.clicked.connect(self.effectOf_pushButton_PathsRightToLeft)
+        self.pushButton_deleteSelectedRecordedPaths.clicked.connect(self.effectOf_pushButton_deleteSelectedRecordedPaths)
         self.pushButton_AddPathToFormRelation.clicked.connect(self.effectOf_pushButton_AddPathToFormRelation)
+        self.pushButton_deleteSelectedRowInRelationBeingFormed.clicked.connect(self.effectOf_pushButton_deleteSelectedRowInRelationBeingFormed)
+
+        
         
         
         
@@ -206,36 +210,75 @@ class appMainWindow(QtWidgets.QDialog, GUI_Window.Ui_MainWindow):
                         index1 = self.quiverVertices.vertexPositions.index(vertex1)
                         for vertex2 in self.quiverVertices.vertexPositions:
                             index2 = self.quiverVertices.vertexPositions.index(vertex2)
-                            if self.adjMatrix[index1,index2]>0:
-                                for k in range(self.adjMatrix[index1,index2]):
-                                    
-                                    curve = drawingQuivers.quiver().CurveFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))
-                                    x_coord, y_coord = curve.real, curve.imag
-                                    drawing = pg.PlotCurveItem(x_coord,y_coord,pen=self.quiverVertices.arrowPen,clickable=True)
-                                    arrowTip = pg.ArrowItem(pos = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"], angle = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["angle"], tipAngle = drawingQuivers.quiver().tipAngle, baseAngle = drawingQuivers.quiver().baseAngle, headLen = drawingQuivers.quiver().headLen, tailLen = drawingQuivers.quiver().tailLen, tailWidth = None, pen =self.quiverVertices.arrowPen, brush = 'r')
-                                    
-                                    epsilon = 0.000000000001
-                                    x = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0]+epsilon]
-                                    y = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1]+epsilon]
-                                    phantomCurveForAnchoringText = pg.PlotCurveItem(x,y,pen=pg.mkPen(color='r', width=0.5))
-                                    curvePoint = pg.CurvePoint(phantomCurveForAnchoringText)
-                                    self.graphicsView_QuiverCanvas.addItem(curvePoint)
-                                    text1 = pg.TextItem("a")
-                                    text2 = pg.TextItem(str(k), anchor=(-0.4, -0.4))
-                                    if directionOfPaths[0] == "LtoR":
-                                        text3 = pg.TextItem("("+str(index1)+","+str(index2)+")",anchor=(-0.15, 0.4))
-                                    if directionOfPaths[0] == "RtoL":
-                                        text3 = pg.TextItem("("+str(index2)+","+str(index1)+")",anchor=(-0.15, 0.4))
-                                    text1.setParentItem(curvePoint)
-                                    text2.setParentItem(curvePoint)
-                                    text3.setParentItem(curvePoint)
-        #                            curvePoint.setPos(drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1])
-                                    self.graphicsView_QuiverCanvas.addItem(phantomCurveForAnchoringText)
-                                    
-                                    edgesDrawn.append([index1,index2,k,drawing,phantomCurveForAnchoringText,curvePoint,arrowTip])
-                                    
-                                    self.graphicsView_QuiverCanvas.addItem(drawing)
-                                    self.graphicsView_QuiverCanvas.addItem(arrowTip)
+                            if index1 != index2:
+                                if self.adjMatrix[index1,index2]>0:
+                                    for k in range(self.adjMatrix[index1,index2]):
+                                        
+                                        curve = drawingQuivers.quiver().CurveFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))
+                                        x_coord, y_coord = curve.real, curve.imag
+                                        drawing = pg.PlotCurveItem(x_coord,y_coord,pen=self.quiverVertices.arrowPen,clickable=True)
+                                        arrowTip = pg.ArrowItem(pos = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"], angle = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["angle"], tipAngle = drawingQuivers.quiver().tipAngle, baseAngle = drawingQuivers.quiver().baseAngle, headLen = drawingQuivers.quiver().headLen, tailLen = drawingQuivers.quiver().tailLen, tailWidth = None, pen =self.quiverVertices.arrowPen, brush = 'r')
+                                        self.graphicsView_QuiverCanvas.addItem(drawing)
+                                        self.graphicsView_QuiverCanvas.addItem(arrowTip)
+                                        
+                                        epsilon = 0.000000000001
+                                        x = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0]+epsilon]
+                                        y = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1]+epsilon]
+                                        phantomCurveForAnchoringText = pg.PlotCurveItem(x,y,pen=pg.mkPen(color='r', width=0.5))
+                                        curvePoint = pg.CurvePoint(phantomCurveForAnchoringText)
+                                        phantomCurveForAnchoringText.setZValue(1)
+                                        curvePoint.setZValue(1)
+                                        self.graphicsView_QuiverCanvas.addItem(curvePoint)
+                                        text1 = pg.TextItem("a")
+                                        text2 = pg.TextItem(str(k), anchor=(-0.4, -0.4))
+                                        if directionOfPaths[0] == "LtoR":
+                                            text3 = pg.TextItem("("+str(index1)+","+str(index2)+")",anchor=(-0.15, 0.4))
+                                        if directionOfPaths[0] == "RtoL":
+                                            text3 = pg.TextItem("("+str(index2)+","+str(index1)+")",anchor=(-0.15, 0.4))
+                                        text1.setParentItem(curvePoint)
+                                        text2.setParentItem(curvePoint)
+                                        text3.setParentItem(curvePoint)
+            #                            curvePoint.setPos(drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1])
+                                        self.graphicsView_QuiverCanvas.addItem(phantomCurveForAnchoringText)
+                                        
+                                        edgesDrawn.append([index1,index2,k,drawing,phantomCurveForAnchoringText,curvePoint,arrowTip])
+                                        
+                                        
+                            else:
+                                if self.adjMatrix[index1,index2]>0:
+                                    for k in range(self.adjMatrix[index1,index2]):
+                                        
+                                        curve = drawingQuivers.quiver().CurveFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))
+                                        x_coord, y_coord = curve.real, curve.imag
+                                        drawing = pg.PlotCurveItem(x_coord,y_coord,pen=self.quiverVertices.arrowPen,clickable=True)
+                                        arrowTip = pg.ArrowItem(pos = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"], angle = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["angle"], tipAngle = drawingQuivers.quiver().tipAngle, baseAngle = drawingQuivers.quiver().baseAngle, headLen = drawingQuivers.quiver().headLen, tailLen = drawingQuivers.quiver().tailLen, tailWidth = None, pen =self.quiverVertices.arrowPen, brush = 'r')
+                                        self.graphicsView_QuiverCanvas.addItem(drawing)
+                                        self.graphicsView_QuiverCanvas.addItem(arrowTip)
+                                        
+                                        epsilon = 0.000000000001
+                                        x = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0]+epsilon]
+                                        y = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1]+epsilon]
+                                        phantomCurveForAnchoringText = pg.PlotCurveItem(x,y,pen=pg.mkPen(color='r', width=0.5))
+                                        curvePoint = pg.CurvePoint(phantomCurveForAnchoringText)
+                                        phantomCurveForAnchoringText.setZValue(1)
+                                        curvePoint.setZValue(1)
+                                        self.graphicsView_QuiverCanvas.addItem(curvePoint)
+                                        text1 = pg.TextItem("a")
+                                        text2 = pg.TextItem(str(k), anchor=(-0.4, -0.4))
+                                        if directionOfPaths[0] == "LtoR":
+                                            text3 = pg.TextItem("("+str(index1)+","+str(index2)+")",anchor=(-0.15, 0.4))
+                                        if directionOfPaths[0] == "RtoL":
+                                            text3 = pg.TextItem("("+str(index2)+","+str(index1)+")",anchor=(-0.15, 0.4))
+                                        text1.setParentItem(curvePoint)
+                                        text2.setParentItem(curvePoint)
+                                        text3.setParentItem(curvePoint)
+            #                            curvePoint.setPos(drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1])
+                                        self.graphicsView_QuiverCanvas.addItem(phantomCurveForAnchoringText)
+                                        
+                                        edgesDrawn.append([index1,index2,k,drawing,phantomCurveForAnchoringText,curvePoint,arrowTip])
+                                        
+                                        
+                                        
                     for edge in edgesDrawn:
                         edge[3].sigClicked.connect(self.edgeClicked)                   
                     self.graphicsView_QuiverCanvas.removeItem(self.quiverVertices)
@@ -280,32 +323,34 @@ class appMainWindow(QtWidgets.QDialog, GUI_Window.Ui_MainWindow):
                 if e[3] is edge and directionOfPaths[0] == "RtoL":
                     if len(pathBeingFormed)>0 and e[1]!=pathBeingFormed[-1][0]:
                         pass
-                    if len(pathBeingFormed)==0:
-                        pathBeingFormed.append(e)
-                        e[3].setPen('w',width=10)
-                        e[6].setStyle(brush='w',pen='w')
-                        #selectedEdges.append(e)
                         
                     if len(pathBeingFormed)>0 and e[1]==pathBeingFormed[-1][0]:
                         pathBeingFormed.append(e)
                         e[3].setPen('w',width=10)
                         e[6].setStyle(brush='w',pen='w')
                         #selectedEdges.append(e) 
-                    
-                elif e[3] is edge and directionOfPaths[0] == "LtoR":
-                    if len(pathBeingFormed)>0 and e[0]!=pathBeingFormed[-1][1]:
-                        pass
+                        
                     if len(pathBeingFormed)==0:
                         pathBeingFormed.append(e)
                         e[3].setPen('w',width=10)
                         e[6].setStyle(brush='w',pen='w')
                         #selectedEdges.append(e)
+                    
+                elif e[3] is edge and directionOfPaths[0] == "LtoR":
+                    if len(pathBeingFormed)>0 and e[0]!=pathBeingFormed[-1][1]:
+                        pass
                         
                     if len(pathBeingFormed)>0 and e[0]==pathBeingFormed[-1][1]:
                         pathBeingFormed.append(e)
                         e[3].setPen('w',width=10)
                         e[6].setStyle(brush='w',pen='w')
                         #selectedEdges.append(e) 
+                        
+                    if len(pathBeingFormed)==0:
+                        pathBeingFormed.append(e)
+                        e[3].setPen('w',width=10)
+                        e[6].setStyle(brush='w',pen='w')
+                        #selectedEdges.append(e)
             
                 
 
@@ -351,6 +396,8 @@ class appMainWindow(QtWidgets.QDialog, GUI_Window.Ui_MainWindow):
                 y = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1]+epsilon]
                 edge[4].setData(x,y,pen=pg.mkPen(color='r', width=0.5))
                 edge[5].setPos(drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1])
+                #edge[4].setZValue(1)
+                #edge[5].setZValue(1)
 
         self.graphicsView_QuiverCanvas.removeItem(self.quiverVertices)
         self.graphicsView_QuiverCanvas.addItem(self.quiverVertices)
@@ -398,11 +445,29 @@ class appMainWindow(QtWidgets.QDialog, GUI_Window.Ui_MainWindow):
                 #print("Paths formed"+str(pathsFormed))
                 print("Paths formed : "+str(pathsFormedReadable))
             
+    def effectOf_pushButton_deleteSelectedRecordedPaths(self):
+        for path in self.listWidget_RecordedPaths.selectedItems():
+            self.listWidget_RecordedPaths.takeItem(self.listWidget_RecordedPaths.row(path))
             
+        
     def effectOf_pushButton_AddPathToFormRelation(self):
         for path in self.listWidget_RecordedPaths.selectedItems():
             self.listWidget_Path.addItem(path.text())
-            self.listWidget_Coefficient.addItem("1")
+            item = QtWidgets.QListWidgetItem("1")
+            item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
+            self.listWidget_Coefficient.addItem(item)
+            ##self.listWidget_Coefficient.setEditTriggers(QtWidgets.QAbstractItemView.SelectedClicked)
+            #item = self.listWidget_Coefficient.setCurrentRow(len(self.listWidget_Coefficient))
+            
+    def effectOf_pushButton_deleteSelectedRowInRelationBeingFormed(self):
+        for path in self.listWidget_Path.selectedItems():
+            self.listWidget_Coefficient.takeItem(self.listWidget_Path.row(path))
+            self.listWidget_Path.takeItem(self.listWidget_Path.row(path))
+            
+        
+            
+            
+
         
         
           

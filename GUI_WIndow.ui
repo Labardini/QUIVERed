@@ -6,7 +6,7 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1096</width>
+    <width>1101</width>
     <height>779</height>
    </rect>
   </property>
@@ -118,14 +118,14 @@ p, li { white-space: pre-wrap; }
    <widget class="QPushButton" name="pushButton_AddPathToFormRelation">
     <property name="geometry">
      <rect>
-      <x>870</x>
+      <x>710</x>
       <y>310</y>
-      <width>51</width>
+      <width>125</width>
       <height>32</height>
      </rect>
     </property>
     <property name="text">
-     <string>&gt;&gt;</string>
+     <string>Pass down sel</string>
     </property>
    </widget>
    <widget class="QRadioButton" name="radioButton_RecordPathsAndRelations">
@@ -151,7 +151,7 @@ p, li { white-space: pre-wrap; }
      </rect>
     </property>
     <property name="editTriggers">
-     <set>QAbstractItemView::AnyKeyPressed|QAbstractItemView::DoubleClicked|QAbstractItemView::EditKeyPressed</set>
+     <set>QAbstractItemView::SelectedClicked</set>
     </property>
    </widget>
    <widget class="QLabel" name="label_Coefficient">
@@ -206,13 +206,78 @@ p, li { white-space: pre-wrap; }
      <string>Recorded paths</string>
     </property>
    </widget>
+   <widget class="QPushButton" name="pushButton_deleteSelectedRecordedPaths">
+    <property name="geometry">
+     <rect>
+      <x>840</x>
+      <y>310</y>
+      <width>125</width>
+      <height>32</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Delete sel</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButton_deleteAllSelectedPaths">
+    <property name="geometry">
+     <rect>
+      <x>970</x>
+      <y>310</y>
+      <width>125</width>
+      <height>32</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Delete all</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButton_deleteSelectedRowInRelationBeingFormed">
+    <property name="geometry">
+     <rect>
+      <x>840</x>
+      <y>570</y>
+      <width>125</width>
+      <height>32</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Delete sel</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButton_deleteAllRowsFromRelationBeingFormed">
+    <property name="geometry">
+     <rect>
+      <x>970</x>
+      <y>570</y>
+      <width>125</width>
+      <height>32</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Delete all</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="pushButton_formRelation">
+    <property name="geometry">
+     <rect>
+      <x>710</x>
+      <y>570</y>
+      <width>125</width>
+      <height>32</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Form relation</string>
+    </property>
+   </widget>
   </widget>
   <widget class="QMenuBar" name="menubar">
    <property name="geometry">
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>1096</width>
+     <width>1101</width>
      <height>22</height>
     </rect>
    </property>
@@ -321,6 +386,54 @@ p, li { white-space: pre-wrap; }
     <hint type="destinationlabel">
      <x>410</x>
      <y>182</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pushButton_deleteAllSelectedPaths</sender>
+   <signal>clicked()</signal>
+   <receiver>listWidget_RecordedPaths</receiver>
+   <slot>clear()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>902</x>
+     <y>347</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>899</x>
+     <y>226</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pushButton_deleteAllRowsFromRelationBeingFormed</sender>
+   <signal>clicked()</signal>
+   <receiver>listWidget_Path</receiver>
+   <slot>clear()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>902</x>
+     <y>607</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>945</x>
+     <y>487</y>
+    </hint>
+   </hints>
+  </connection>
+  <connection>
+   <sender>pushButton_deleteAllRowsFromRelationBeingFormed</sender>
+   <signal>clicked()</signal>
+   <receiver>listWidget_Coefficient</receiver>
+   <slot>clear()</slot>
+   <hints>
+    <hint type="sourcelabel">
+     <x>902</x>
+     <y>607</y>
+    </hint>
+    <hint type="destinationlabel">
+     <x>749</x>
+     <y>487</y>
     </hint>
    </hints>
   </connection>
