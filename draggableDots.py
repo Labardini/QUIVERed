@@ -57,6 +57,7 @@ class draggableDot(pg.GraphItem):
         self.arrowPen = pg.mkPen(color='r', width=3)
         self.vertexBrush = pg.mkBrush(color='r')
         self.vertexPen = pg.mkPen(color='r')
+        self.setData(pen =self.vertexPen, brush=self.vertexBrush)
         self.mypoint_index = None
         self.mydata_list = None
         self.newPos = None
@@ -131,6 +132,7 @@ class draggableDot(pg.GraphItem):
         self.mydata_list = data_list
         mypoint = [tup for tup in data_list if pts[0] in tup][0]
         self.mypoint_index = data_list.index(mypoint)
+        #print(self.mypoint_index)
 
  
 #        mypoint_edges = [tup for tup in self.data['adj'] if mypoint_index in tup]

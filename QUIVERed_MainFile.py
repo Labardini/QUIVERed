@@ -6,7 +6,7 @@ Created on Fri Aug  5 11:52:02 2022
 @author: caesar
 """
 
-from PyQt5 import QtGui, QtWidgets
+from PyQt5 import QtWidgets #QtGui
 #from PyQt5.QtCore import *
 #from PyQt5.QtGui import *
 import sys
@@ -15,8 +15,6 @@ import numpy
 
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore
-
-from pyqtgraph.ptime import time
 
 #### FOR 3D drawings
 #import pyqtgraph.opengl as gl
@@ -28,16 +26,16 @@ import drawingQuivers
 import unicodeEncoding as uni
 
 PositionsOfVertices = [] # members of this list will have the form {'pos':[x,y]} 
-edgesDrawn = []
+#edgesDrawn = []
 selectedVertices = []
-selectedEdges = []
+#selectedEdges = []
 pathBeingFormed = []
 pathsFormed = []
 pathsFormedReadable = []
 directionOfPaths = []
 indicesOfSelectedPathsToFormRelation = []
 
-storageRoom = [PositionsOfVertices,edgesDrawn,selectedEdges,pathBeingFormed,pathsFormed]
+storageRoom = [PositionsOfVertices,selectedVertices,pathBeingFormed,pathsFormed,pathsFormedReadable,indicesOfSelectedPathsToFormRelation]
 
 
 class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
@@ -47,10 +45,17 @@ class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
         self.setupUi(self)
         
         
+        self.numOfClicks = None
+        
         self.timer = None # in some animations it will become QtCore.QTimer(self)
         
         self.quiverInfo = drawingQuivers.quiver()
-        self.adjMatrix = numpy.array([])
+        self.adjMatrix = []
+        self.adjMatrixEnhanced = []
+        self.selectedEdges = {}
+        self.vertexLabels=[]
+        
+        self.storageRoom = [self.selectedEdges]
         
         
         
@@ -78,6 +83,7 @@ class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
         
         self.pushButton_PathsLeftToRight.clicked.connect(self.effectOf_pushButton_PathsLeftToRight)
         self.pushButton_PathsRightToLeft.clicked.connect(self.effectOf_pushButton_PathsRightToLeft)
+        self.pushButton_DeleteSelectedArrowsOrVertices.clicked.connect(self.effectOf_pushButton_DeleteSelectedArrowsOrVertices)
         self.pushButton_deleteSelectedRecordedPaths.clicked.connect(self.effectOf_pushButton_deleteSelectedRecordedPaths)
         self.pushButton_AddPathToFormRelation.clicked.connect(self.effectOf_pushButton_AddPathToFormRelation)
         self.pushButton_deleteSelectedRowInRelationBeingFormed.clicked.connect(self.effectOf_pushButton_deleteSelectedRowInRelationBeingFormed)
@@ -109,23 +115,138 @@ class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
             self.timer = None
         
         self.graphicsView_QuiverCanvas.setAspectLocked(1.0)      
-        self.quiverVertices.setData(pos=numpy.array([[0,-100]]))
+        #self.quiverVertices.scatter.clear()
         self.graphicsView_QuiverCanvas.clear()
+        self.quiverVertices = dD.draggableDot()
         self.graphicsView_QuiverCanvas.addItem(self.quiverVertices)
+        self.quiverVertices.Dot.moved.connect(self.moveQuiverAround)
         for infoStored in storageRoom:
             infoStored.clear()
-        self.adjMatrix = numpy.array([])
+        for infoStored in self.storageRoom:
+            infoStored.clear()
+        #self.quiverVertices.dragPoint = None
+        #self.quiverVertices.dragOffset = None
+        #self.quiverVertices.mypoint_index = None
+        #self.quiverVertices.mydata_list = None
+        #self.quiverVertices.newPos = None
+        self.adjMatrix = []
+        self.adjMatrixEnhanced = []
+        self.vertexLabels.clear()
+        #self.quiverVertices.setData()
+        #self.quiverVertices.vertexPositions = []
+        #print("positionsinDELETE="+str(self.quiverVertices.vertexPositions))
+        
+        
+        
+        
+        
+        #self.vertexLabels = ["%d" % i for i in range(len(PositionsOfVertices))]
+        #self.quiverVertices.setData(size=self.quiverInfo.vertexRadius, pxMode=True, text=self.vertexLabels)
+        
         
         
         
     def vertexIsHovered(self,ev):
         print("indeed")
         
+
+    def adjMatrixEnhancedFromAdjMatrix(self,Matrix,vertexPositions):
+        if len(Matrix) == 0:
+            result = []
+        else:
+            MatrixEnhanced = numpy.empty((len(Matrix),len(Matrix)),dtype=object)
+            for rowNumber in range(len(Matrix)):
+                for columnNumber in range(len(Matrix)):
+                    MatrixEnhanced[rowNumber,columnNumber] = []
+            #self.graphicsView_QuiverCanvas.clear()
+            #self.graphicsView_QuiverCanvas.addItem(self.quiverVertices)
+            for vertex1 in vertexPositions:
+                index1 = vertexPositions.index(vertex1)
+                for vertex2 in vertexPositions:
+                    index2 = vertexPositions.index(vertex2)
+                    if index1 != index2:
+                        if Matrix[index1,index2]>0:
+                            for arrowIndex in range(Matrix[index1,index2]):
+                                
+                                curve = drawingQuivers.quiver().CurveFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(Matrix[index2,index1]))
+                                x_coord, y_coord = curve.real, curve.imag
+                                drawing = pg.PlotCurveItem(x_coord,y_coord,pen=self.quiverVertices.arrowPen,clickable=True)
+                                arrowTip = pg.ArrowItem(pos = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(Matrix[index2,index1]))["pos"], angle = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(Matrix[index2,index1]))["angle"], tipAngle = drawingQuivers.quiver().tipAngle, baseAngle = drawingQuivers.quiver().baseAngle, headLen = drawingQuivers.quiver().headLen, tailLen = drawingQuivers.quiver().tailLen, tailWidth = None, pen =self.quiverVertices.arrowPen, brush = 'r')
+                                #self.graphicsView_QuiverCanvas.addItem(drawing)
+                                #self.graphicsView_QuiverCanvas.addItem(arrowTip)
+                                
+                                epsilon = 0.000000000001
+                                x = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(Matrix[index2,index1]))["pos"][0],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(Matrix[index2,index1]))["pos"][0]+epsilon]
+                                y = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(Matrix[index2,index1]))["pos"][1],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(Matrix[index2,index1]))["pos"][1]+epsilon]
+                                phantomCurveForAnchoringText = pg.PlotCurveItem(x,y,pen=pg.mkPen(color='r', width=0.5))
+                                pointOnPhantomCurve = pg.CurvePoint(phantomCurveForAnchoringText)
+                                phantomCurveForAnchoringText.setZValue(1)
+                                pointOnPhantomCurve.setZValue(1)
+                                #self.graphicsView_QuiverCanvas.addItem(pointOnPhantomCurve)
+                                text1 = pg.TextItem("a")
+                                text2 = pg.TextItem(str(arrowIndex), anchor=(-0.4, -0.4))
+                                if directionOfPaths[0] == "LtoR":
+                                    text3 = pg.TextItem("("+str(index1)+","+str(index2)+")",anchor=(-0.15, 0.4))
+                                if directionOfPaths[0] == "RtoL":
+                                    text3 = pg.TextItem("("+str(index2)+","+str(index1)+")",anchor=(-0.15, 0.4))
+                                text1.setParentItem(pointOnPhantomCurve)
+                                text2.setParentItem(pointOnPhantomCurve)
+                                text3.setParentItem(pointOnPhantomCurve)
+                                #self.graphicsView_QuiverCanvas.addItem(phantomCurveForAnchoringText)
+                                MatrixEnhanced[index1,index2].append([drawing,phantomCurveForAnchoringText,pointOnPhantomCurve,arrowTip])
+                                
+                                
+                    else:
+                        if Matrix[index1,index2]>0:
+                            for arrowIndex in range(Matrix[index1,index2]):
+                                curve = drawingQuivers.quiver().CurveFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(Matrix[index2,index1]))
+                                x_coord, y_coord = curve.real, curve.imag
+                                drawing = pg.PlotCurveItem(x_coord,y_coord,pen=self.quiverVertices.arrowPen,clickable=True)
+                                arrowTip = pg.ArrowItem(pos = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(Matrix[index2,index1]))["pos"], angle = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(Matrix[index2,index1]))["angle"], tipAngle = drawingQuivers.quiver().tipAngle, baseAngle = drawingQuivers.quiver().baseAngle, headLen = drawingQuivers.quiver().headLen, tailLen = drawingQuivers.quiver().tailLen, tailWidth = None, pen =self.quiverVertices.arrowPen, brush = 'r')
+                                #self.graphicsView_QuiverCanvas.addItem(drawing)
+                                #self.graphicsView_QuiverCanvas.addItem(arrowTip)
+                                
+                                epsilon = 0.000000000001
+                                x = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(Matrix[index2,index1]))["pos"][0],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(Matrix[index2,index1]))["pos"][0]+epsilon]
+                                y = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(Matrix[index2,index1]))["pos"][1],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(Matrix[index2,index1]))["pos"][1]+epsilon]
+                                phantomCurveForAnchoringText = pg.PlotCurveItem(x,y,pen=pg.mkPen(color='r', width=0.5))
+                                pointOnPhantomCurve = pg.CurvePoint(phantomCurveForAnchoringText)
+                                phantomCurveForAnchoringText.setZValue(1)
+                                pointOnPhantomCurve.setZValue(1)
+                                #self.graphicsView_QuiverCanvas.addItem(pointOnPhantomCurve)
+                                text1 = pg.TextItem("a")
+                                text2 = pg.TextItem(str(arrowIndex), anchor=(-0.4, -0.4))
+                                if directionOfPaths[0] == "LtoR":
+                                    text3 = pg.TextItem("("+str(index1)+","+str(index2)+")",anchor=(-0.15, 0.4))
+                                if directionOfPaths[0] == "RtoL":
+                                    text3 = pg.TextItem("("+str(index2)+","+str(index1)+")",anchor=(-0.15, 0.4))
+                                text1.setParentItem(pointOnPhantomCurve)
+                                text2.setParentItem(pointOnPhantomCurve)
+                                text3.setParentItem(pointOnPhantomCurve)
+                                #self.graphicsView_QuiverCanvas.addItem(phantomCurveForAnchoringText)
+                                MatrixEnhanced[index1,index2].append([drawing,phantomCurveForAnchoringText,pointOnPhantomCurve,arrowTip])      
+            result = MatrixEnhanced
+        return result
+                      
+
+    def addGraphicalItemsToCanvasFromMatrixEnhanced(self,EnhancedMatrix,vertexPositions):
+        self.graphicsView_QuiverCanvas.clear()
+        points = numpy.array([[vertexPositions[k]['pos'][0],vertexPositions[k]['pos'][1]] for k in range(len(vertexPositions))],dtype=float)
+        quiverProperties = self.quiverInfo
+        self.vertexLabels = ["%d" % i for i in range(len(vertexPositions))]
+        self.quiverVertices.setData(pos=points, size=quiverProperties.vertexRadius, pxMode=True, text=self.vertexLabels, pen=self.quiverVertices.vertexPen, brush=self.quiverVertices.vertexBrush)
+        self.graphicsView_QuiverCanvas.addItem(self.quiverVertices)
+        for index1 in len(EnhancedMatrix):
+            for index2 in len(EnhancedMatrix):
+                for entry in EnhancedMatrix[index1,index2]:
+                    self.graphicsView_QuiverCanvas.addItem(entry)
+                
+                
+
+        
     def quiverConstruction(self,ev):
         global PositionsOfVertices
-        global edgesDrawn
         global selectedVertices
-        global selectedEdges
         global directionOfPaths
         if len(directionOfPaths) == 0:
             pass
@@ -135,202 +256,370 @@ class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
                 x = self.graphicsView_QuiverCanvas.plotItem.vb.mapSceneToView(ev.scenePos()).x()
                 y = self.graphicsView_QuiverCanvas.plotItem.vb.mapSceneToView(ev.scenePos()).y()
                 
-                
-                if ev.double() == True:
-                    selectedVertices.clear()
-                    
-                    if len(self.adjMatrix) > 0:
-                        newZeroColumn = numpy.array([[0] for l in range(len(self.adjMatrix))])
-                        newZeroRow = numpy.array([[0 for l in range(len(self.adjMatrix)+1)]])
-                        self.adjMatrix = numpy.hstack((self.adjMatrix,newZeroColumn))
-                        self.adjMatrix = numpy.vstack((self.adjMatrix,newZeroRow))
-                    if len(self.adjMatrix)==0:
-                        self.adjMatrix = numpy.array([[0]])
-        
-                    
-                    PositionsOfVertices.append({'pos':[x,y]})
-                    points = numpy.array([[PositionsOfVertices[k]['pos'][0],PositionsOfVertices[k]['pos'][1]] for k in range(len(PositionsOfVertices))],dtype=float)
-                    quiverProperties = drawingQuivers.quiver()
-                    vertexLabels = ["%d" % i for i in range(len(PositionsOfVertices))]
-                    self.quiverVertices.setData(pos=points, size=quiverProperties.vertexRadius, pxMode=True, text=vertexLabels)
-                    #print(self.quiverVertices.scatter.data.tolist())
-                
-                
-                
-                if len(selectedVertices) < 2 and self.quiverVertices.mypoint_index != None:
-                    selectedVertices.append(self.quiverVertices.mypoint_index)
-                    symbolBrushs = [None] * len(self.quiverVertices.vertexPositions)
-                    print(selectedVertices)
-                    for vertex in selectedVertices: 
-                        symbolBrushs[vertex] = pg.mkBrush(color='c')#pg.mkBrush(color=(255, 0, 0))
-                    vertexLabels = ["%d" % i for i in range(len(self.quiverVertices.mydata_list))]
-                    self.quiverVertices.setData(pos=self.quiverVertices.newPos, symbolBrush=symbolBrushs,text=vertexLabels)
-                    print(selectedVertices)
-                
                 roundedVertexPositions = [[round(vertex[0],1),round(vertex[1],1)] for vertex in self.quiverVertices.vertexPositions]  # 1=one decimal digit accuracy
                 roundedxy = [round(x,1),round(y,1)]
-                if len(selectedVertices) == 1 and self.quiverVertices.mypoint_index != None and roundedxy not in roundedVertexPositions :
-                    selectedVertices.clear()
-                    points = numpy.array([[PositionsOfVertices[k]['pos'][0],PositionsOfVertices[k]['pos'][1]] for k in range(len(PositionsOfVertices))],dtype=float)
-                    quiverProperties = drawingQuivers.quiver()
-                    vertexLabels = ["%d" % i for i in range(len(PositionsOfVertices))]
-                    self.quiverVertices.setData(pos=points, size=quiverProperties.vertexRadius, pxMode=True, text=vertexLabels,pen =self.quiverVertices.vertexPen, brush=self.quiverVertices.vertexBrush)
-                   
-                if len(selectedVertices) == 2 and self.quiverVertices.mypoint_index != None:
-                    i = selectedVertices[0]
-                    j = selectedVertices[1]
-                    self.adjMatrix[i,j] = self.adjMatrix[i,j]+1
-                    for edge in edgesDrawn:
-                        self.graphicsView_QuiverCanvas.removeItem(edge[3])
-                        self.graphicsView_QuiverCanvas.removeItem(edge[4])
-                        self.graphicsView_QuiverCanvas.removeItem(edge[5])
-                        self.graphicsView_QuiverCanvas.removeItem(edge[6])
-                    edgesDrawn.clear()
-                    
-                    for vertex1 in self.quiverVertices.vertexPositions:
-                        index1 = self.quiverVertices.vertexPositions.index(vertex1)
-                        for vertex2 in self.quiverVertices.vertexPositions:
-                            index2 = self.quiverVertices.vertexPositions.index(vertex2)
-                            if index1 != index2:
-                                if self.adjMatrix[index1,index2]>0:
-                                    for arrowIndex in range(self.adjMatrix[index1,index2]):
-                                        
-                                        curve = drawingQuivers.quiver().CurveFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))
-                                        x_coord, y_coord = curve.real, curve.imag
-                                        drawing = pg.PlotCurveItem(x_coord,y_coord,pen=self.quiverVertices.arrowPen,clickable=True)
-                                        arrowTip = pg.ArrowItem(pos = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"], angle = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["angle"], tipAngle = drawingQuivers.quiver().tipAngle, baseAngle = drawingQuivers.quiver().baseAngle, headLen = drawingQuivers.quiver().headLen, tailLen = drawingQuivers.quiver().tailLen, tailWidth = None, pen =self.quiverVertices.arrowPen, brush = 'r')
-                                        self.graphicsView_QuiverCanvas.addItem(drawing)
-                                        self.graphicsView_QuiverCanvas.addItem(arrowTip)
-                                        
-                                        epsilon = 0.000000000001
-                                        x = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0]+epsilon]
-                                        y = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1]+epsilon]
-                                        phantomCurveForAnchoringText = pg.PlotCurveItem(x,y,pen=pg.mkPen(color='r', width=0.5))
-                                        curvePoint = pg.CurvePoint(phantomCurveForAnchoringText)
-                                        phantomCurveForAnchoringText.setZValue(1)
-                                        curvePoint.setZValue(1)
-                                        self.graphicsView_QuiverCanvas.addItem(curvePoint)
-                                        text1 = pg.TextItem("a")
-                                        text2 = pg.TextItem(str(arrowIndex), anchor=(-0.4, -0.4))
-                                        if directionOfPaths[0] == "LtoR":
-                                            text3 = pg.TextItem("("+str(index1)+","+str(index2)+")",anchor=(-0.15, 0.4))
-                                        if directionOfPaths[0] == "RtoL":
-                                            text3 = pg.TextItem("("+str(index2)+","+str(index1)+")",anchor=(-0.15, 0.4))
-                                        text1.setParentItem(curvePoint)
-                                        text2.setParentItem(curvePoint)
-                                        text3.setParentItem(curvePoint)
-            #                            curvePoint.setPos(drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1])
-                                        self.graphicsView_QuiverCanvas.addItem(phantomCurveForAnchoringText)
-                                        
-                                        edgesDrawn.append([index1,index2,arrowIndex,drawing,phantomCurveForAnchoringText,curvePoint,arrowTip])
-                                        
-                                        
-                            else:
-                                if self.adjMatrix[index1,index2]>0:
-                                    for arrowIndex in range(self.adjMatrix[index1,index2]):
-                                        curve = drawingQuivers.quiver().CurveFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))
-                                        x_coord, y_coord = curve.real, curve.imag
-                                        drawnCurve = pg.PlotCurveItem(x_coord,y_coord,pen=self.quiverVertices.arrowPen,clickable=True)
-                                        arrowTip = pg.ArrowItem(pos = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"], angle = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["angle"], tipAngle = drawingQuivers.quiver().tipAngle, baseAngle = drawingQuivers.quiver().baseAngle, headLen = drawingQuivers.quiver().headLen, tailLen = drawingQuivers.quiver().tailLen, tailWidth = None, pen =self.quiverVertices.arrowPen, brush = 'r')
-                                        self.graphicsView_QuiverCanvas.addItem(drawnCurve)
-                                        self.graphicsView_QuiverCanvas.addItem(arrowTip)
-                                        
-                                        epsilon = 0.000000000001
-                                        x = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0]+epsilon]
-                                        y = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1]+epsilon]
-                                        phantomCurveForAnchoringText = pg.PlotCurveItem(x,y,pen=pg.mkPen(color='r', width=0.5))
-                                        pointOnPhantomCurve = pg.CurvePoint(phantomCurveForAnchoringText)
-                                        phantomCurveForAnchoringText.setZValue(1)
-                                        pointOnPhantomCurve.setZValue(1)
-                                        self.graphicsView_QuiverCanvas.addItem(pointOnPhantomCurve)
-                                        text1 = pg.TextItem("a")
-                                        text2 = pg.TextItem(str(arrowIndex), anchor=(-0.4, -0.4))
-                                        if directionOfPaths[0] == "LtoR":
-                                            text3 = pg.TextItem("("+str(index1)+","+str(index2)+")",anchor=(-0.15, 0.4))
-                                        if directionOfPaths[0] == "RtoL":
-                                            text3 = pg.TextItem("("+str(index2)+","+str(index1)+")",anchor=(-0.15, 0.4))
-                                        text1.setParentItem(pointOnPhantomCurve)
-                                        text2.setParentItem(pointOnPhantomCurve)
-                                        text3.setParentItem(pointOnPhantomCurve)
-            #                            pointOnPhantomCurve.setPos(drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1])
-                                        self.graphicsView_QuiverCanvas.addItem(phantomCurveForAnchoringText)
-                                        
-                                        edgesDrawn.append([index1,index2,arrowIndex,drawnCurve,phantomCurveForAnchoringText,pointOnPhantomCurve,arrowTip])
-                                        # each edge in edgesDrawn has the form edge=[index1,index2,arrowIndex,drawnCurve,phantomCurveForAnchoringText,pointOnPhantomCurve,arrowTip]
-                                        
-                                        
-                    for edge in edgesDrawn:
-                        edge[3].sigClicked.connect(self.edgeClicked)                   
-                    self.graphicsView_QuiverCanvas.removeItem(self.quiverVertices)
-                    self.graphicsView_QuiverCanvas.addItem(self.quiverVertices)
-                    selectedVertices.clear()
-            
-                    #self.quiverVertices.selectedVertices.clear()
-                    
-                #print(self.adjMatrix)
-                #print(len(self.adjMatrix))
-                    
-                    def update():
-                        points = numpy.array([[PositionsOfVertices[k]['pos'][0],PositionsOfVertices[k]['pos'][1]] for k in range(len(PositionsOfVertices))],dtype=float)
-                        quiverProperties = drawingQuivers.quiver()
-                        vertexLabels = ["%d" % i for i in range(len(PositionsOfVertices))]
-                        print("done waiting")
-                        self.quiverVertices.setData(pos=points, size=quiverProperties.vertexRadius, pxMode=True, text=vertexLabels,pen =self.quiverVertices.vertexPen, brush=self.quiverVertices.vertexBrush)
-                        self.timer.stop()
+                                
+                
+                def singleClick():
+                    if self.numOfClicks == 2:
+                        self.numOfClicks = None
+                    else:
+                        # next line for later possible use:
+                        # self.numOfClicks = 1
+                        print("single click")
+                        print(ev.double())
                         
-                    if self.timer:
-                        self.timer.stop()
-                        self.timer.deleteLater()
-                    self.timer = QtCore.QTimer(self)
-                    self.timer.timeout.connect(update)
-                    self.timer.start(500)
+                        if roundedxy not in roundedVertexPositions:
+                            selectedVertices.clear()
+                            
+                            points = numpy.array([[PositionsOfVertices[k]['pos'][0],PositionsOfVertices[k]['pos'][1]] for k in range(len(PositionsOfVertices))],dtype=float)
+                            quiverProperties = self.quiverInfo
+                            self.vertexLabels = ["%d" % i for i in range(len(PositionsOfVertices))]
+                            self.quiverVertices.setData(pos=points, size=quiverProperties.vertexRadius, pxMode=True, text=self.vertexLabels, pen=self.quiverVertices.vertexPen, brush=self.quiverVertices.vertexBrush)
+          
+                            
+
+                        if len(selectedVertices) < 2 and self.quiverVertices.mypoint_index != None and roundedxy in roundedVertexPositions:
+                            selectedVertices.append(self.quiverVertices.mypoint_index)
+                            symbolBrushs = [None] * len(self.quiverVertices.vertexPositions)
+                            
+                            for vertex in selectedVertices: 
+                                symbolBrushs[vertex] = pg.mkBrush(color='c')#pg.mkBrush(color=(255, 0, 0))
+                            self.vertexLabels = ["%d" % i for i in range(len(self.quiverVertices.mydata_list))]
+                            self.quiverVertices.setData(pos=self.quiverVertices.newPos, symbolBrush=symbolBrushs,text=self.vertexLabels)
+                            
+                        
+                        # if len(selectedVertices) == 1 and self.quiverVertices.mypoint_index != None and roundedxy not in roundedVertexPositions:
+                        #     print("length="+str(len(selectedVertices)))
+                        #     selectedVertices.clear()
+                            
+                        #     points = numpy.array([[PositionsOfVertices[k]['pos'][0],PositionsOfVertices[k]['pos'][1]] for k in range(len(PositionsOfVertices))],dtype=float)
+                        #     quiverProperties = self.quiverInfo
+                        #     self.vertexLabels = ["%d" % i for i in range(len(PositionsOfVertices))]
+                        #     self.quiverVertices.setData(pos=points, size=quiverProperties.vertexRadius, pxMode=True, text=self.vertexLabels, pen=self.quiverVertices.vertexPen, brush=self.quiverVertices.vertexBrush)
+                             
+
+                        if len(selectedVertices) == 2 and self.quiverVertices.mypoint_index != None:
+                            i = selectedVertices[0]
+                            j = selectedVertices[1]
+                            self.adjMatrix[i,j] = self.adjMatrix[i,j]+1
+                            
+                            for row in self.adjMatrixEnhanced:
+                                for entry in row:
+                                    if entry != None:
+                                        for edge in entry:
+                                            self.graphicsView_QuiverCanvas.removeItem(edge[0])
+                                            self.graphicsView_QuiverCanvas.removeItem(edge[1])
+                                            self.graphicsView_QuiverCanvas.removeItem(edge[2])
+                                            self.graphicsView_QuiverCanvas.removeItem(edge[3])
+                                        entry.clear()
+                                        
+                            def update():
+                                points = numpy.array([[PositionsOfVertices[k]['pos'][0],PositionsOfVertices[k]['pos'][1]] for k in range(len(PositionsOfVertices))],dtype=float)
+                                quiverProperties = self.quiverInfo
+                                self.vertexLabels = ["%d" % i for i in range(len(PositionsOfVertices))]
+                                self.quiverVertices.setData(pos=points, size=quiverProperties.vertexRadius, pxMode=True, text=self.vertexLabels,pen =self.quiverVertices.vertexPen, brush=self.quiverVertices.vertexBrush)
+                                self.timer.stop()
+                                
+                            if self.timer:
+                                self.timer.stop()
+                                self.timer.deleteLater()
+                            self.timer = QtCore.QTimer(self)
+                            self.timer.timeout.connect(update)
+                            self.timer.start(750)
+                            
+                            selectedVertices.clear()                        
+
+                            self.adjMatrixEnhanced = numpy.empty((len(PositionsOfVertices),len(PositionsOfVertices)),dtype=object)
+                            for rowNumber in range(len(PositionsOfVertices)):
+                                for columnNumber in range(len(PositionsOfVertices)):
+                                    self.adjMatrixEnhanced[rowNumber,columnNumber] = []
+                            self.graphicsView_QuiverCanvas.clear()
+                            self.graphicsView_QuiverCanvas.addItem(self.quiverVertices)
+                            for vertex1 in self.quiverVertices.vertexPositions:
+                                index1 = self.quiverVertices.vertexPositions.index(vertex1)
+                                for vertex2 in self.quiverVertices.vertexPositions:
+                                    index2 = self.quiverVertices.vertexPositions.index(vertex2)
+                                    if index1 != index2:
+                                        if self.adjMatrix[index1,index2]>0:
+                                            for arrowIndex in range(self.adjMatrix[index1,index2]):
+                                                
+                                                curve = drawingQuivers.quiver().CurveFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))
+                                                x_coord, y_coord = curve.real, curve.imag
+                                                drawing = pg.PlotCurveItem(x_coord,y_coord,pen=self.quiverVertices.arrowPen,clickable=True)
+                                                arrowTip = pg.ArrowItem(pos = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"], angle = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["angle"], tipAngle = drawingQuivers.quiver().tipAngle, baseAngle = drawingQuivers.quiver().baseAngle, headLen = drawingQuivers.quiver().headLen, tailLen = drawingQuivers.quiver().tailLen, tailWidth = None, pen =self.quiverVertices.arrowPen, brush = 'r')
+                                                self.graphicsView_QuiverCanvas.addItem(drawing)
+                                                self.graphicsView_QuiverCanvas.addItem(arrowTip)
+                                                
+                                                epsilon = 0.000000000001
+                                                x = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0]+epsilon]
+                                                y = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1]+epsilon]
+                                                phantomCurveForAnchoringText = pg.PlotCurveItem(x,y,pen=pg.mkPen(color='r', width=0.5))
+                                                pointOnPhantomCurve = pg.CurvePoint(phantomCurveForAnchoringText)
+                                                phantomCurveForAnchoringText.setZValue(1)
+                                                pointOnPhantomCurve.setZValue(1)
+                                                self.graphicsView_QuiverCanvas.addItem(pointOnPhantomCurve)
+                                                text1 = pg.TextItem("a")
+                                                text2 = pg.TextItem(str(arrowIndex), anchor=(-0.4, -0.4))
+                                                if directionOfPaths[0] == "LtoR":
+                                                    text3 = pg.TextItem("("+str(index1)+","+str(index2)+")",anchor=(-0.15, 0.4))
+                                                if directionOfPaths[0] == "RtoL":
+                                                    text3 = pg.TextItem("("+str(index2)+","+str(index1)+")",anchor=(-0.15, 0.4))
+                                                text1.setParentItem(pointOnPhantomCurve)
+                                                text2.setParentItem(pointOnPhantomCurve)
+                                                text3.setParentItem(pointOnPhantomCurve)
+                    #                            curvePoint.setPos(drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1])
+                                                self.graphicsView_QuiverCanvas.addItem(phantomCurveForAnchoringText)
+                                                self.adjMatrixEnhanced[index1,index2].append([drawing,phantomCurveForAnchoringText,pointOnPhantomCurve,arrowTip])
+                                                
+                                                
+                                    else:
+                                        if self.adjMatrix[index1,index2]>0:
+                                            for arrowIndex in range(self.adjMatrix[index1,index2]):
+                                                curve = drawingQuivers.quiver().CurveFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))
+                                                x_coord, y_coord = curve.real, curve.imag
+                                                drawing = pg.PlotCurveItem(x_coord,y_coord,pen=self.quiverVertices.arrowPen,clickable=True)
+                                                arrowTip = pg.ArrowItem(pos = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"], angle = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["angle"], tipAngle = drawingQuivers.quiver().tipAngle, baseAngle = drawingQuivers.quiver().baseAngle, headLen = drawingQuivers.quiver().headLen, tailLen = drawingQuivers.quiver().tailLen, tailWidth = None, pen =self.quiverVertices.arrowPen, brush = 'r')
+                                                self.graphicsView_QuiverCanvas.addItem(drawing)
+                                                self.graphicsView_QuiverCanvas.addItem(arrowTip)
+                                                
+                                                epsilon = 0.000000000001
+                                                x = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0]+epsilon]
+                                                y = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1]+epsilon]
+                                                phantomCurveForAnchoringText = pg.PlotCurveItem(x,y,pen=pg.mkPen(color='r', width=0.5))
+                                                pointOnPhantomCurve = pg.CurvePoint(phantomCurveForAnchoringText)
+                                                phantomCurveForAnchoringText.setZValue(1)
+                                                pointOnPhantomCurve.setZValue(1)
+                                                self.graphicsView_QuiverCanvas.addItem(pointOnPhantomCurve)
+                                                text1 = pg.TextItem("a")
+                                                text2 = pg.TextItem(str(arrowIndex), anchor=(-0.4, -0.4))
+                                                if directionOfPaths[0] == "LtoR":
+                                                    text3 = pg.TextItem("("+str(index1)+","+str(index2)+")",anchor=(-0.15, 0.4))
+                                                if directionOfPaths[0] == "RtoL":
+                                                    text3 = pg.TextItem("("+str(index2)+","+str(index1)+")",anchor=(-0.15, 0.4))
+                                                text1.setParentItem(pointOnPhantomCurve)
+                                                text2.setParentItem(pointOnPhantomCurve)
+                                                text3.setParentItem(pointOnPhantomCurve)
+                    #                            pointOnPhantomCurve.setPos(drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1])
+                                                self.graphicsView_QuiverCanvas.addItem(phantomCurveForAnchoringText)
+                                                
+                                                self.adjMatrixEnhanced[index1,index2].append([drawing,phantomCurveForAnchoringText,pointOnPhantomCurve,arrowTip])      
+                                                
+                        for row in self.adjMatrixEnhanced:
+                            for entry in row:
+                                if entry != None:
+                                    for edge in entry:
+                                        edge[0].sigClicked.connect(self.edgeClicked)                   
+                        self.graphicsView_QuiverCanvas.removeItem(self.quiverVertices)
+                        self.graphicsView_QuiverCanvas.addItem(self.quiverVertices)
+               
+                        #self.quiverVertices.selectedVertices.clear()
+                        
+                    #print(self.adjMatrix)
+                    #print(len(self.adjMatrix))
+                    
+                    self.quiverVertices.mypoint_index = None
+
+                        
+                def doubleClick():
+                    print("double click")
+                    nonlocal x
+                    nonlocal y
+                    if self.quiverVertices.mypoint_index == None:
+                        
+                        selectedVertices.clear()
+                        
+                        PositionsOfVertices.append({'pos':[x,y]})
+                        points = numpy.array([[PositionsOfVertices[k]['pos'][0],PositionsOfVertices[k]['pos'][1]] for k in range(len(PositionsOfVertices))],dtype=float)
+                        quiverProperties = self.quiverInfo
+                        self.vertexLabels = ["%d" % i for i in range(len(PositionsOfVertices))]
+                        self.quiverVertices.setData(pos=points, size=quiverProperties.vertexRadius, pxMode=True, text=self.vertexLabels)
+                        #print(self.quiverVertices.scatter.data.tolist())
+                        
+                        if len(self.adjMatrix) > 0:
+                            newZeroColumn = numpy.array([[0] for l in range(len(self.adjMatrix))])
+                            newZeroRow = numpy.array([[0 for l in range(len(self.adjMatrix)+1)]])
+                            self.adjMatrix = numpy.hstack((self.adjMatrix,newZeroColumn))
+                            self.adjMatrix = numpy.vstack((self.adjMatrix,newZeroRow))
+                            self.adjMatrixEnhanced = numpy.empty((len(PositionsOfVertices),len(PositionsOfVertices)),dtype=object)
+                            indexOfNewVertex = len(PositionsOfVertices)-1
+                            for rowNumber in range(len(PositionsOfVertices)):
+                                for columnNumber in range(len(PositionsOfVertices)):
+                                    self.adjMatrixEnhanced[rowNumber,columnNumber] = []
+                            self.graphicsView_QuiverCanvas.clear()
+                            self.graphicsView_QuiverCanvas.addItem(self.quiverVertices)
+                            for vertex1 in self.quiverVertices.vertexPositions:
+                                index1 = self.quiverVertices.vertexPositions.index(vertex1)
+                                print("index1="+str(index1))
+                                for vertex2 in self.quiverVertices.vertexPositions:
+                                    index2 = self.quiverVertices.vertexPositions.index(vertex2)
+                                    print("index2="+str(index2))
+                                    if index1 != index2:
+                                        print("A="+str(self.adjMatrix))
+                                        if self.adjMatrix[index1,index2]>0:
+                                            for arrowIndex in range(self.adjMatrix[index1,index2]):
+                                                
+                                                curve = drawingQuivers.quiver().CurveFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))
+                                                x_coord, y_coord = curve.real, curve.imag
+                                                drawing = pg.PlotCurveItem(x_coord,y_coord,pen=self.quiverVertices.arrowPen,clickable=True)
+                                                arrowTip = pg.ArrowItem(pos = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"], angle = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["angle"], tipAngle = drawingQuivers.quiver().tipAngle, baseAngle = drawingQuivers.quiver().baseAngle, headLen = drawingQuivers.quiver().headLen, tailLen = drawingQuivers.quiver().tailLen, tailWidth = None, pen =self.quiverVertices.arrowPen, brush = 'r')
+                                                self.graphicsView_QuiverCanvas.addItem(drawing)
+                                                self.graphicsView_QuiverCanvas.addItem(arrowTip)
+                                                
+                                                epsilon = 0.000000000001
+                                                x = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0]+epsilon]
+                                                y = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1]+epsilon]
+                                                phantomCurveForAnchoringText = pg.PlotCurveItem(x,y,pen=pg.mkPen(color='r', width=0.5))
+                                                pointOnPhantomCurve = pg.CurvePoint(phantomCurveForAnchoringText)
+                                                phantomCurveForAnchoringText.setZValue(1)
+                                                pointOnPhantomCurve.setZValue(1)
+                                                self.graphicsView_QuiverCanvas.addItem(pointOnPhantomCurve)
+                                                text1 = pg.TextItem("a")
+                                                text2 = pg.TextItem(str(arrowIndex), anchor=(-0.4, -0.4))
+                                                if directionOfPaths[0] == "LtoR":
+                                                    text3 = pg.TextItem("("+str(index1)+","+str(index2)+")",anchor=(-0.15, 0.4))
+                                                if directionOfPaths[0] == "RtoL":
+                                                    text3 = pg.TextItem("("+str(index2)+","+str(index1)+")",anchor=(-0.15, 0.4))
+                                                text1.setParentItem(pointOnPhantomCurve)
+                                                text2.setParentItem(pointOnPhantomCurve)
+                                                text3.setParentItem(pointOnPhantomCurve)
+                    #                            curvePoint.setPos(drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1])
+                                                self.graphicsView_QuiverCanvas.addItem(phantomCurveForAnchoringText)
+                                                self.adjMatrixEnhanced[index1,index2].append([drawing,phantomCurveForAnchoringText,pointOnPhantomCurve,arrowTip])
+                                                
+                                                
+                                    else:
+                                        if self.adjMatrix[index1,index2]>0:
+                                            for arrowIndex in range(self.adjMatrix[index1,index2]):
+                                                curve = drawingQuivers.quiver().CurveFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))
+                                                x_coord, y_coord = curve.real, curve.imag
+                                                drawing = pg.PlotCurveItem(x_coord,y_coord,pen=self.quiverVertices.arrowPen,clickable=True)
+                                                arrowTip = pg.ArrowItem(pos = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"], angle = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["angle"], tipAngle = drawingQuivers.quiver().tipAngle, baseAngle = drawingQuivers.quiver().baseAngle, headLen = drawingQuivers.quiver().headLen, tailLen = drawingQuivers.quiver().tailLen, tailWidth = None, pen =self.quiverVertices.arrowPen, brush = 'r')
+                                                self.graphicsView_QuiverCanvas.addItem(drawing)
+                                                self.graphicsView_QuiverCanvas.addItem(arrowTip)
+                                                
+                                                epsilon = 0.000000000001
+                                                x = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0]+epsilon]
+                                                y = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1]+epsilon]
+                                                phantomCurveForAnchoringText = pg.PlotCurveItem(x,y,pen=pg.mkPen(color='r', width=0.5))
+                                                pointOnPhantomCurve = pg.CurvePoint(phantomCurveForAnchoringText)
+                                                phantomCurveForAnchoringText.setZValue(1)
+                                                pointOnPhantomCurve.setZValue(1)
+                                                self.graphicsView_QuiverCanvas.addItem(pointOnPhantomCurve)
+                                                text1 = pg.TextItem("a")
+                                                text2 = pg.TextItem(str(arrowIndex), anchor=(-0.4, -0.4))
+                                                if directionOfPaths[0] == "LtoR":
+                                                    text3 = pg.TextItem("("+str(index1)+","+str(index2)+")",anchor=(-0.15, 0.4))
+                                                if directionOfPaths[0] == "RtoL":
+                                                    text3 = pg.TextItem("("+str(index2)+","+str(index1)+")",anchor=(-0.15, 0.4))
+                                                text1.setParentItem(pointOnPhantomCurve)
+                                                text2.setParentItem(pointOnPhantomCurve)
+                                                text3.setParentItem(pointOnPhantomCurve)
+                    #                            pointOnPhantomCurve.setPos(drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1])
+                                                self.graphicsView_QuiverCanvas.addItem(phantomCurveForAnchoringText)
+                                                
+                                                self.adjMatrixEnhanced[index1,index2].append([drawing,phantomCurveForAnchoringText,pointOnPhantomCurve,arrowTip])      
+                                                
+                            for row in self.adjMatrixEnhanced:
+                                for entry in row:
+                                    if entry != None:
+                                        for edge in entry:
+                                            edge[0].sigClicked.connect(self.edgeClicked)                   
+                            self.graphicsView_QuiverCanvas.removeItem(self.quiverVertices)
+                            self.graphicsView_QuiverCanvas.addItem(self.quiverVertices)
+                   
+                            #self.quiverVertices.selectedVertices.clear()
+                            
+                        #print(self.adjMatrix)
+                        #print(len(self.adjMatrix))
+                        
+                            
+
+                                    
+                        if len(self.adjMatrix)==0:
+                            self.adjMatrix = numpy.array([[0]])
+                            self.adjMatrixEnhanced = None
+                            
+                    #self.quiverVertices.mypoint_index = None
+
+                        self.quiverVertices.mypoint_index = None
+                
+                if ev.double() == False:
+                    QtCore.QTimer.singleShot(QtWidgets.QApplication.instance().doubleClickInterval(),singleClick)
+                    
+                else:
+                    self.numOfClicks = 2
+                    doubleClick()                    
+                
+                
+                    
+            
+                                         
+                
+                
+                
+                                     
+                                     
+        
+            #     if ev.double() == False:
+                    
+                    
+                    
+
+                        
+                        
+    
             
     def edgeClicked(self,edge):
         if self.radioButton_DrawQuiver.isChecked() == True:
-            selectedEdges.clear()
-            for e in edgesDrawn:
-                if e[3] is edge:
-                    e[3].setPen('c',width=10)
-                    e[6].setStyle(brush='c',pen='c')
-                    selectedEdges.append(e)
-                else:
-                    e[3].setPen(self.quiverVertices.arrowPen)
-                    e[6].setStyle(brush='r',pen='r')
+            self.selectedEdges.clear()
+            for i in range(len(self.adjMatrixEnhanced)):
+                        for j in range(len(self.adjMatrixEnhanced)):
+                            for e in self.adjMatrixEnhanced[i,j]:
+                                if e[0] is edge:
+                                    e[0].setPen('c',width=10)
+                                    e[3].setStyle(brush='c',pen='c')
+                                    self.selectedEdges[e[0]] = [i,j,self.adjMatrixEnhanced[i,j].index(e)]
+                                else:
+                                    e[0].setPen(self.quiverVertices.arrowPen)
+                                    e[3].setStyle(brush='r',pen='r')
         if self.radioButton_RecordPathsAndRelations.isChecked() == True:
             self.quiverVertices.selectedVertices.clear()
             #selectedEdges.clear()
-            for e in edgesDrawn:
-                if e[3] is edge and directionOfPaths[0] == "RtoL":
-                    if len(pathBeingFormed)>0 and e[1]!=pathBeingFormed[-1][0]:
-                        pass
-                        
-                    if len(pathBeingFormed)>0 and e[1]==pathBeingFormed[-1][0]:
-                        pathBeingFormed.append(e)
-                        e[3].setPen('w',width=10)
-                        e[6].setStyle(brush='w',pen='w')
-                        #selectedEdges.append(e) 
-                        
-                    if len(pathBeingFormed)==0:
-                        pathBeingFormed.append(e)
-                        e[3].setPen('w',width=10)
-                        e[6].setStyle(brush='w',pen='w')
-                        #selectedEdges.append(e)
-                    
-                elif e[3] is edge and directionOfPaths[0] == "LtoR":
-                    if len(pathBeingFormed)>0 and e[0]!=pathBeingFormed[-1][1]:
-                        pass
-                        
-                    if len(pathBeingFormed)>0 and e[0]==pathBeingFormed[-1][1]:
-                        pathBeingFormed.append(e)
-                        e[3].setPen('w',width=10)
-                        e[6].setStyle(brush='w',pen='w')
-                        #selectedEdges.append(e) 
-                        
-                    if len(pathBeingFormed)==0:
-                        pathBeingFormed.append(e)
-                        e[3].setPen('w',width=10)
-                        e[6].setStyle(brush='w',pen='w')
-                        #selectedEdges.append(e)
+            for i in range(len(self.adjMatrixEnhanced)):
+                        for j in range(len(self.adjMatrixEnhanced)):
+                            for e in self.adjMatrixEnhanced[i,j]:
+                                if e[0] is edge and directionOfPaths[0] == "RtoL":
+                                    if len(pathBeingFormed)>0 and j !=pathBeingFormed[-1][0]:
+                                        pass
+                                        
+                                    if len(pathBeingFormed)>0 and j ==pathBeingFormed[-1][0]:
+                                        pathBeingFormed.append([i,j,self.adjMatrixEnhanced[i,j].index(e)])
+                                        e[0].setPen('w',width=10)
+                                        e[3].setStyle(brush='w',pen='w')
+                                        #selectedEdges.append(e) 
+                                        
+                                    if len(pathBeingFormed)==0:
+                                        pathBeingFormed.append([i,j,self.adjMatrixEnhanced[i,j].index(e)])
+                                        e[0].setPen('w',width=10)
+                                        e[3].setStyle(brush='w',pen='w')
+                                        #selectedEdges.append(e)
+                                    
+                                elif e[0] is edge and directionOfPaths[0] == "LtoR":
+                                    if len(pathBeingFormed)>0 and i !=pathBeingFormed[-1][1]:
+                                        pass
+                                        
+                                    if len(pathBeingFormed)>0 and i ==pathBeingFormed[-1][1]:
+                                        pathBeingFormed.append([i,j,self.adjMatrixEnhanced[i,j].index(e)])
+                                        e[0].setPen('w',width=10)
+                                        e[3].setStyle(brush='w',pen='w')
+                                        #selectedEdges.append(e) 
+                                        
+                                    if len(pathBeingFormed)==0:
+                                        pathBeingFormed.append([i,j,self.adjMatrixEnhanced[i,j].index(e)])
+                                        e[0].setPen('w',width=10)
+                                        e[3].setStyle(brush='w',pen='w')
+                                        #selectedEdges.append(e)
             
                 
 
@@ -349,56 +638,174 @@ class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
     
     def moveQuiverAround(self,pt,ind):
         global PositionsOfVertices
-        global edgesDrawn
         PositionsOfVertices[ind] = {'pos':[pt[0],pt[1]]}
         if ind < len(self.quiverVertices.vertexPositions) :
             self.quiverVertices.vertexPositions[ind] = [pt[0],pt[1]]
-        for edge in edgesDrawn: # each edge in edgesDrawn has the form edge=[index1,index2,arrowIndex,drawnCurve,phantomCurveForAnchoringText,pointOnPhantomCurve,arrowTip]
-            if edge[0] == ind or edge[1] == ind:
-                index1 = edge[0]
-                index2 = edge[1]
-                k = edge[2]
-        
-                self.graphicsView_QuiverCanvas.removeItem(edge[6])
-                newTipPos = drawingQuivers.quiver().TipFormthArrow(PositionsOfVertices[index1]['pos'],PositionsOfVertices[index2]['pos'],k+numpy.sign(self.adjMatrix[index2,index1]))["pos"]
-                newTipAngle = drawingQuivers.quiver().TipFormthArrow(PositionsOfVertices[index1]['pos'],PositionsOfVertices[index2]['pos'],k+numpy.sign(self.adjMatrix[index2,index1]))["angle"]
-                edge[6] = pg.ArrowItem(pos = newTipPos, angle = newTipAngle, tipAngle = drawingQuivers.quiver().tipAngle, baseAngle = drawingQuivers.quiver().baseAngle, headLen = drawingQuivers.quiver().headLen, tailLen = drawingQuivers.quiver().tailLen, tailWidth = None, pen =self.quiverVertices.arrowPen, brush = 'r')
-                self.graphicsView_QuiverCanvas.addItem(edge[6])
+        for i in range(len(self.adjMatrixEnhanced)):
+            for j in range(len(self.adjMatrixEnhanced)):
+                for edge in self.adjMatrixEnhanced[i,j]: 
+                    if i == ind or j == ind:
+                        index1 = i
+                        index2 = j
+                        k = self.adjMatrixEnhanced[i,j].index(edge)
                 
-                curve = drawingQuivers.quiver().CurveFormthArrow(PositionsOfVertices[edge[0]]['pos'],PositionsOfVertices[edge[1]]['pos'],k+numpy.sign(self.adjMatrix[index2,index1]))
-                x_coord, y_coord = curve.real, curve.imag
-                edge[3].setData(x_coord,y_coord,pen=self.quiverVertices.arrowPen)
-                
-                epsilon = 0.000000000001
-                vertex1 = PositionsOfVertices[edge[0]]['pos']
-                vertex2 = PositionsOfVertices[edge[1]]['pos']
-                x = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0]+epsilon]
-                y = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1]+epsilon]
-                edge[4].setData(x,y,pen=pg.mkPen(color='r', width=0.5))
-                edge[5].setPos(drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1])
-                #edge[4].setZValue(1)
-                #edge[5].setZValue(1)
+                        self.graphicsView_QuiverCanvas.removeItem(edge[3])
+                        newTipPos = drawingQuivers.quiver().TipFormthArrow(PositionsOfVertices[index1]['pos'],PositionsOfVertices[index2]['pos'],k+numpy.sign(self.adjMatrix[index2,index1]))["pos"]
+                        newTipAngle = drawingQuivers.quiver().TipFormthArrow(PositionsOfVertices[index1]['pos'],PositionsOfVertices[index2]['pos'],k+numpy.sign(self.adjMatrix[index2,index1]))["angle"]
+                        edge[3] = pg.ArrowItem(pos = newTipPos, angle = newTipAngle, tipAngle = drawingQuivers.quiver().tipAngle, baseAngle = drawingQuivers.quiver().baseAngle, headLen = drawingQuivers.quiver().headLen, tailLen = drawingQuivers.quiver().tailLen, tailWidth = None, pen =self.quiverVertices.arrowPen, brush = 'r')
+                        self.graphicsView_QuiverCanvas.addItem(edge[3])
+                        
+                        curve = drawingQuivers.quiver().CurveFormthArrow(PositionsOfVertices[i]['pos'],PositionsOfVertices[j]['pos'],k+numpy.sign(self.adjMatrix[index2,index1]))
+                        x_coord, y_coord = curve.real, curve.imag
+                        edge[0].setData(x_coord,y_coord,pen=self.quiverVertices.arrowPen)
+                        
+                        epsilon = 0.000000000001
+                        vertex1 = PositionsOfVertices[i]['pos']
+                        vertex2 = PositionsOfVertices[j]['pos']
+                        x = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0]+epsilon]
+                        y = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1]+epsilon]
+                        edge[1].setData(x,y,pen=pg.mkPen(color='r', width=0.5))
+                        edge[2].setPos(drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,k+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1])
+                        #edge[4].setZValue(1)
+                        #edge[5].setZValue(1)
 
         self.graphicsView_QuiverCanvas.removeItem(self.quiverVertices)
         self.graphicsView_QuiverCanvas.addItem(self.quiverVertices)
+    
+    
+    def effectOf_pushButton_DeleteSelectedArrowsOrVertices(self):
+        global PositionOfVertices
+        global pathsFormedReadable
+        if self.radioButton_DrawQuiver.isChecked() == True:
+            if len(selectedVertices) == 1:
+                j = selectedVertices[0]
+                for i in range(len(self.adjMatrixEnhanced)):
+                    for e in self.adjMatrixEnhanced[i,j]:
+                        self.selectedEdges[e[0]] = [i,j,self.adjMatrixEnhanced[i,j].index(e)]
+                    for e in self.adjMatrixEnhanced[j,i]:
+                        self.selectedEdges[e[0]] = [j,i,self.adjMatrixEnhanced[j,i].index(e)]
+            for graphicCurve in self.selectedEdges:
+                i, j, k = self.selectedEdges[graphicCurve][0], self.selectedEdges[graphicCurve][1], self.selectedEdges[graphicCurve][2]
+                for path in pathsFormed:
+                    if [i, j, k] in path:
+                        pathsFormed.remove(path)
+                pathsFormedReadable = []
+                for path in pathsFormed:
+                    if directionOfPaths[0] == "LtoR":
+                        pathReadableAsList = ["a"+ uni.sup(str(i)+"-"+str(j))+uni.sub(k) for edge in path]
+                    if directionOfPaths[0] == "RtoL":
+                        pathReadableAsList = ["a"+ uni.sup(str(j)+"-"+str(i))+uni.sub(k) for edge in path]
+                    pathReadableAsString = ""
+                    for arrow in pathReadableAsList:
+                        if len(pathReadableAsString) == 0:
+                            pathReadableAsString = pathReadableAsString + arrow
+                        else:
+                            pathReadableAsString = pathReadableAsString + " • " + arrow
+                    #self.listWidget_RecordedPaths.addItem(pathReadableAsString)
+                    pathsFormedReadable.append(pathReadableAsString)
+                
+                
+                for ell in range(len(self.adjMatrixEnhanced[i,j])):
+                    self.graphicsView_QuiverCanvas.removeItem(self.adjMatrixEnhanced[i,j][ell][0])
+                    self.graphicsView_QuiverCanvas.removeItem(self.adjMatrixEnhanced[i,j][ell][1])
+                    self.graphicsView_QuiverCanvas.removeItem(self.adjMatrixEnhanced[i,j][ell][2])
+                    self.graphicsView_QuiverCanvas.removeItem(self.adjMatrixEnhanced[i,j][ell][3])
+                
+                self.adjMatrixEnhanced[i,j].clear()
+                self.adjMatrix[i,j] = self.adjMatrix[i,j]-1    
+                
+                index1, index2 = i, j
+                vertex1, vertex2 = self.quiverVertices.vertexPositions[i], self.quiverVertices.vertexPositions[j]
+                if index1 != index2:
+                    if self.adjMatrix[index1,index2]>0:
+                        for arrowIndex in range(self.adjMatrix[index1,index2]):
+                            
+                            curve = drawingQuivers.quiver().CurveFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))
+                            x_coord, y_coord = curve.real, curve.imag
+                            drawing = pg.PlotCurveItem(x_coord,y_coord,pen=self.quiverVertices.arrowPen,clickable=True)
+                            arrowTip = pg.ArrowItem(pos = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"], angle = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["angle"], tipAngle = drawingQuivers.quiver().tipAngle, baseAngle = drawingQuivers.quiver().baseAngle, headLen = drawingQuivers.quiver().headLen, tailLen = drawingQuivers.quiver().tailLen, tailWidth = None, pen =self.quiverVertices.arrowPen, brush = 'r')
+                            self.graphicsView_QuiverCanvas.addItem(drawing)
+                            self.graphicsView_QuiverCanvas.addItem(arrowTip)
+                            
+                            epsilon = 0.000000000001
+                            x = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0]+epsilon]
+                            y = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1]+epsilon]
+                            phantomCurveForAnchoringText = pg.PlotCurveItem(x,y,pen=pg.mkPen(color='r', width=0.5))
+                            pointOnPhantomCurve = pg.CurvePoint(phantomCurveForAnchoringText)
+                            phantomCurveForAnchoringText.setZValue(1)
+                            pointOnPhantomCurve.setZValue(1)
+                            self.graphicsView_QuiverCanvas.addItem(pointOnPhantomCurve)
+                            text1 = pg.TextItem("a")
+                            text2 = pg.TextItem(str(arrowIndex), anchor=(-0.4, -0.4))
+                            if directionOfPaths[0] == "LtoR":
+                                text3 = pg.TextItem("("+str(index1)+","+str(index2)+")",anchor=(-0.15, 0.4))
+                            if directionOfPaths[0] == "RtoL":
+                                text3 = pg.TextItem("("+str(index2)+","+str(index1)+")",anchor=(-0.15, 0.4))
+                            text1.setParentItem(pointOnPhantomCurve)
+                            text2.setParentItem(pointOnPhantomCurve)
+                            text3.setParentItem(pointOnPhantomCurve)
+#                            curvePoint.setPos(drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1])
+                            self.graphicsView_QuiverCanvas.addItem(phantomCurveForAnchoringText)
+                            self.adjMatrixEnhanced[index1,index2].append([drawing,phantomCurveForAnchoringText,pointOnPhantomCurve,arrowTip])
+                            
+                                    
+                else:
+                    if self.adjMatrix[index1,index2]>0:
+                        for arrowIndex in range(self.adjMatrix[index1,index2]):
+                            curve = drawingQuivers.quiver().CurveFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))
+                            x_coord, y_coord = curve.real, curve.imag
+                            drawing = pg.PlotCurveItem(x_coord,y_coord,pen=self.quiverVertices.arrowPen,clickable=True)
+                            arrowTip = pg.ArrowItem(pos = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"], angle = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["angle"], tipAngle = drawingQuivers.quiver().tipAngle, baseAngle = drawingQuivers.quiver().baseAngle, headLen = drawingQuivers.quiver().headLen, tailLen = drawingQuivers.quiver().tailLen, tailWidth = None, pen =self.quiverVertices.arrowPen, brush = 'r')
+                            self.graphicsView_QuiverCanvas.addItem(drawing)
+                            self.graphicsView_QuiverCanvas.addItem(arrowTip)
+                            
+                            epsilon = 0.000000000001
+                            x = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0]+epsilon]
+                            y = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1]+epsilon]
+                            phantomCurveForAnchoringText = pg.PlotCurveItem(x,y,pen=pg.mkPen(color='r', width=0.5))
+                            pointOnPhantomCurve = pg.CurvePoint(phantomCurveForAnchoringText)
+                            phantomCurveForAnchoringText.setZValue(1)
+                            pointOnPhantomCurve.setZValue(1)
+                            self.graphicsView_QuiverCanvas.addItem(pointOnPhantomCurve)
+                            text1 = pg.TextItem("a")
+                            text2 = pg.TextItem(str(arrowIndex), anchor=(-0.4, -0.4))
+                            if directionOfPaths[0] == "LtoR":
+                                text3 = pg.TextItem("("+str(index1)+","+str(index2)+")",anchor=(-0.15, 0.4))
+                            if directionOfPaths[0] == "RtoL":
+                                text3 = pg.TextItem("("+str(index2)+","+str(index1)+")",anchor=(-0.15, 0.4))
+                            text1.setParentItem(pointOnPhantomCurve)
+                            text2.setParentItem(pointOnPhantomCurve)
+                            text3.setParentItem(pointOnPhantomCurve)
+#                            pointOnPhantomCurve.setPos(drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1])
+                            self.graphicsView_QuiverCanvas.addItem(phantomCurveForAnchoringText)
+                            
+                            self.adjMatrixEnhanced[index1,index2].append([drawing,phantomCurveForAnchoringText,pointOnPhantomCurve,arrowTip])      
+                            
+                for row in self.adjMatrixEnhanced:
+                    for entry in row:
+                        for edge in entry:
+                            edge[0].sigClicked.connect(self.edgeClicked)                   
+                self.graphicsView_QuiverCanvas.removeItem(self.quiverVertices)
+                self.graphicsView_QuiverCanvas.addItem(self.quiverVertices)
         
+    
     def keyPressEvent(self,event):
         global PositionsOfVertices
         global pathsFormedReadable
         if self.radioButton_DrawQuiver.isChecked() == True:
             if event.key() == 16777219:# 16777219 is the DELETE key
                 print("delete key pressed")
-                for edge in selectedEdges:
-                    i, j = edge[0], edge[1]
+                for graphicCurve in self.selectedEdges:
+                    i, j, k = self.selectedEdges[graphicCurve][0], self.selectedEdges[graphicCurve][1], self.selectedEdges[graphicCurve][2]
                     for path in pathsFormed:
-                        if edge in path:
+                        if [i, j, k] in path:
                             pathsFormed.remove(path)
                     pathsFormedReadable = []
                     for path in pathsFormed:
                         if directionOfPaths[0] == "LtoR":
-                            pathReadableAsList = ["a"+ uni.sup(str(edge[0])+"-"+str(edge[1]))+uni.sub(edge[2]) for edge in path]
+                            pathReadableAsList = ["a"+ uni.sup(str(i)+"-"+str(j))+uni.sub(k) for edge in path]
                         if directionOfPaths[0] == "RtoL":
-                            pathReadableAsList = ["a"+ uni.sup(str(edge[1])+"-"+str(edge[0]))+uni.sub(edge[2]) for edge in path]
+                            pathReadableAsList = ["a"+ uni.sup(str(j)+"-"+str(i))+uni.sub(k) for edge in path]
                         pathReadableAsString = ""
                         for arrow in pathReadableAsList:
                             if len(pathReadableAsString) == 0:
@@ -407,18 +814,90 @@ class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
                                 pathReadableAsString = pathReadableAsString + " • " + arrow
                         #self.listWidget_RecordedPaths.addItem(pathReadableAsString)
                         pathsFormedReadable.append(pathReadableAsString)
-                    for arrow in edgesDrawn:
-                        if arrow[0] == i and arrow[1] == j and arrow[2] == self.adjMatrix[i,j]-1:
-                            self.graphicsView_QuiverCanvas.removeItem(arrow[3])
-                            self.graphicsView_QuiverCanvas.removeItem(arrow[4])
-                            self.graphicsView_QuiverCanvas.removeItem(arrow[5])
-                            self.graphicsView_QuiverCanvas.removeItem(arrow[6])
-                            edgesDrawn.remove(arrow)
                     
-                    edge[3].setPen(self.quiverVertices.arrowPen)
-                    edge[6].setStyle(brush='r',pen='r')
+                    
+                    for ell in range(len(self.adjMatrixEnhanced[i,j])):
+                        self.graphicsView_QuiverCanvas.removeItem(self.adjMatrixEnhanced[i,j][ell][0])
+                        self.graphicsView_QuiverCanvas.removeItem(self.adjMatrixEnhanced[i,j][ell][1])
+                        self.graphicsView_QuiverCanvas.removeItem(self.adjMatrixEnhanced[i,j][ell][2])
+                        self.graphicsView_QuiverCanvas.removeItem(self.adjMatrixEnhanced[i,j][ell][3])
+                    
+                    self.adjMatrixEnhanced[i,j].clear()
                     self.adjMatrix[i,j] = self.adjMatrix[i,j]-1    
-                    selectedEdges.remove(edge)
+                    
+                    index1, index2 = i, j
+                    vertex1, vertex2 = self.quiverVertices.vertexPositions[i], self.quiverVertices.vertexPositions[j]
+                    if index1 != index2:
+                        if self.adjMatrix[index1,index2]>0:
+                            for arrowIndex in range(self.adjMatrix[index1,index2]):
+                                
+                                curve = drawingQuivers.quiver().CurveFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))
+                                x_coord, y_coord = curve.real, curve.imag
+                                drawing = pg.PlotCurveItem(x_coord,y_coord,pen=self.quiverVertices.arrowPen,clickable=True)
+                                arrowTip = pg.ArrowItem(pos = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"], angle = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["angle"], tipAngle = drawingQuivers.quiver().tipAngle, baseAngle = drawingQuivers.quiver().baseAngle, headLen = drawingQuivers.quiver().headLen, tailLen = drawingQuivers.quiver().tailLen, tailWidth = None, pen =self.quiverVertices.arrowPen, brush = 'r')
+                                self.graphicsView_QuiverCanvas.addItem(drawing)
+                                self.graphicsView_QuiverCanvas.addItem(arrowTip)
+                                
+                                epsilon = 0.000000000001
+                                x = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0]+epsilon]
+                                y = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1]+epsilon]
+                                phantomCurveForAnchoringText = pg.PlotCurveItem(x,y,pen=pg.mkPen(color='r', width=0.5))
+                                pointOnPhantomCurve = pg.CurvePoint(phantomCurveForAnchoringText)
+                                phantomCurveForAnchoringText.setZValue(1)
+                                pointOnPhantomCurve.setZValue(1)
+                                self.graphicsView_QuiverCanvas.addItem(pointOnPhantomCurve)
+                                text1 = pg.TextItem("a")
+                                text2 = pg.TextItem(str(arrowIndex), anchor=(-0.4, -0.4))
+                                if directionOfPaths[0] == "LtoR":
+                                    text3 = pg.TextItem("("+str(index1)+","+str(index2)+")",anchor=(-0.15, 0.4))
+                                if directionOfPaths[0] == "RtoL":
+                                    text3 = pg.TextItem("("+str(index2)+","+str(index1)+")",anchor=(-0.15, 0.4))
+                                text1.setParentItem(pointOnPhantomCurve)
+                                text2.setParentItem(pointOnPhantomCurve)
+                                text3.setParentItem(pointOnPhantomCurve)
+    #                            curvePoint.setPos(drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1])
+                                self.graphicsView_QuiverCanvas.addItem(phantomCurveForAnchoringText)
+                                self.adjMatrixEnhanced[index1,index2].append([drawing,phantomCurveForAnchoringText,pointOnPhantomCurve,arrowTip])
+                                
+                                        
+                    else:
+                        if self.adjMatrix[index1,index2]>0:
+                            for arrowIndex in range(self.adjMatrix[index1,index2]):
+                                curve = drawingQuivers.quiver().CurveFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))
+                                x_coord, y_coord = curve.real, curve.imag
+                                drawing = pg.PlotCurveItem(x_coord,y_coord,pen=self.quiverVertices.arrowPen,clickable=True)
+                                arrowTip = pg.ArrowItem(pos = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"], angle = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["angle"], tipAngle = drawingQuivers.quiver().tipAngle, baseAngle = drawingQuivers.quiver().baseAngle, headLen = drawingQuivers.quiver().headLen, tailLen = drawingQuivers.quiver().tailLen, tailWidth = None, pen =self.quiverVertices.arrowPen, brush = 'r')
+                                self.graphicsView_QuiverCanvas.addItem(drawing)
+                                self.graphicsView_QuiverCanvas.addItem(arrowTip)
+                                
+                                epsilon = 0.000000000001
+                                x = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0]+epsilon]
+                                y = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1]+epsilon]
+                                phantomCurveForAnchoringText = pg.PlotCurveItem(x,y,pen=pg.mkPen(color='r', width=0.5))
+                                pointOnPhantomCurve = pg.CurvePoint(phantomCurveForAnchoringText)
+                                phantomCurveForAnchoringText.setZValue(1)
+                                pointOnPhantomCurve.setZValue(1)
+                                self.graphicsView_QuiverCanvas.addItem(pointOnPhantomCurve)
+                                text1 = pg.TextItem("a")
+                                text2 = pg.TextItem(str(arrowIndex), anchor=(-0.4, -0.4))
+                                if directionOfPaths[0] == "LtoR":
+                                    text3 = pg.TextItem("("+str(index1)+","+str(index2)+")",anchor=(-0.15, 0.4))
+                                if directionOfPaths[0] == "RtoL":
+                                    text3 = pg.TextItem("("+str(index2)+","+str(index1)+")",anchor=(-0.15, 0.4))
+                                text1.setParentItem(pointOnPhantomCurve)
+                                text2.setParentItem(pointOnPhantomCurve)
+                                text3.setParentItem(pointOnPhantomCurve)
+    #                            pointOnPhantomCurve.setPos(drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1])
+                                self.graphicsView_QuiverCanvas.addItem(phantomCurveForAnchoringText)
+                                
+                                self.adjMatrixEnhanced[index1,index2].append([drawing,phantomCurveForAnchoringText,pointOnPhantomCurve,arrowTip])      
+                                
+                    for row in self.adjMatrixEnhanced:
+                        for entry in row:
+                            for edge in entry:
+                                edge[0].sigClicked.connect(self.edgeClicked)                   
+                    self.graphicsView_QuiverCanvas.removeItem(self.quiverVertices)
+                    self.graphicsView_QuiverCanvas.addItem(self.quiverVertices)
     
 
         if self.radioButton_RecordPathsAndRelations.isChecked() == True:
@@ -439,23 +918,27 @@ class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
                 auxTempList = [path for path in pathBeingFormed]
                 pathsFormed.append(auxTempList)
                 pathBeingFormed.clear()
-                for e in edgesDrawn:
-                    e[3].setPen(self.quiverVertices.arrowPen)
-                    e[6].setStyle(brush='r',pen='r')
+                for i in range(len(self.adjMatrixEnhanced)):
+                    for j in range(len(self.adjMatrixEnhanced)):
+                        for e in self.adjMatrixEnhanced[i,j]:
+                            e[0].setPen(self.quiverVertices.arrowPen)
+                            e[3].setStyle(brush='r',pen='r')
                 #print("Paths formed"+str(pathsFormed))
                 #print("Paths formed : "+str(pathsFormedReadable))
                 
         if event.key() == 16777216: # 16777216 is the ESCAPE key
             selectedVertices.clear()
-            selectedEdges.clear()
+            self.selectedEdges.clear()
             pathBeingFormed.clear()
             points = numpy.array([[PositionsOfVertices[k]['pos'][0],PositionsOfVertices[k]['pos'][1]] for k in range(len(PositionsOfVertices))],dtype=float)
             quiverProperties = drawingQuivers.quiver()
-            vertexLabels = ["%d" % i for i in range(len(PositionsOfVertices))]
-            self.quiverVertices.setData(pos=points, size=quiverProperties.vertexRadius, pxMode=True, text=vertexLabels,pen =self.quiverVertices.vertexPen, brush=self.quiverVertices.vertexBrush)
-            for e in edgesDrawn:
-                e[3].setPen(self.quiverVertices.arrowPen)
-                e[6].setStyle(brush='r',pen='r')
+            self.vertexLabels = ["%d" % i for i in range(len(PositionsOfVertices))]
+            self.quiverVertices.setData(pos=points, size=quiverProperties.vertexRadius, pxMode=True, text=self.vertexLabels,pen =self.quiverVertices.vertexPen, brush=self.quiverVertices.vertexBrush)
+            for i in range(len(self.adjMatrixEnhanced)):
+                for j in range(len(self.adjMatrixEnhanced)):
+                    for e in self.adjMatrixEnhanced[i,j]:
+                        e[0].setPen(self.quiverVertices.arrowPen)
+                        e[3].setStyle(brush='r',pen='r')
                 
         #if event.key() == 16777249: # 16777249 is the COMMAND key in Mac, CONTROL key in Linux
          #   print("control")
@@ -463,17 +946,19 @@ class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
 
     def effectOf_buttonGroup_radioButtons_drawQuiver_recordPathsAndRels(self):
         selectedVertices.clear()
-        selectedEdges.clear()
+        self.selectedEdges.clear()
         pathBeingFormed.clear()
         points = numpy.array([[PositionsOfVertices[k]['pos'][0],PositionsOfVertices[k]['pos'][1]] for k in range(len(PositionsOfVertices))],dtype=float)
         quiverProperties = drawingQuivers.quiver()
-        vertexLabels = ["%d" % i for i in range(len(PositionsOfVertices))]
-        self.quiverVertices.setData(pos=points, size=quiverProperties.vertexRadius, pxMode=True, text=vertexLabels,pen =self.quiverVertices.vertexPen, brush=self.quiverVertices.vertexBrush)
-        for e in edgesDrawn:
-            e[3].setPen(self.quiverVertices.arrowPen)
-            e[6].setStyle(brush='r',pen='r')
+        self.vertexLabels = ["%d" % i for i in range(len(PositionsOfVertices))]
+        self.quiverVertices.setData(pos=points, size=quiverProperties.vertexRadius, pxMode=True, text=self.vertexLabels,pen =self.quiverVertices.vertexPen, brush=self.quiverVertices.vertexBrush)
+        for i in range(len(self.adjMatrixEnhanced)):
+            for j in range(len(self.adjMatrixEnhanced)):
+                for e in self.adjMatrixEnhanced[i,j]:
+                    e[0].setPen(self.quiverVertices.arrowPen)
+                    e[3].setStyle(brush='r',pen='r')
         
-        
+    
             
             
     def effectOf_pushButton_deleteSelectedRecordedPaths(self):
@@ -515,3 +1000,4 @@ app = QtWidgets.QApplication(sys.argv)
 w = MainWindow()
 w.show()
 sys.exit(app.exec_())
+

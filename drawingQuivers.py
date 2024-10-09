@@ -46,18 +46,34 @@ class quiver:
         z0, z1 = self.Plane.coordsR2ToC(initPt), self.Plane.coordsR2ToC(finalPt)
         midPoint = (z0+z1)/2
         halfdifference =(z0-z1)/2
-        if m == 0:
-            def paramCurve(t):
-                return z0 + t*(z1-z0)/np.pi
-        elif m >0 :
-            def paramCurve(t):
-                adHocParam = 1/5
-                return midPoint + halfdifference * np.cos(t) + (m) * halfdifference *(1j) * adHocParam * np.sin(t)
+        if z0 != z1:
+            if m == 0:
+                def paramCurve(t):
+                    return z0 + t*(z1-z0)/np.pi
+            elif m >0 :
+                def paramCurve(t):
+                    adHocParam = 1/5
+                    return midPoint + halfdifference * np.cos(t) + (m) * halfdifference *(1j) * adHocParam * np.sin(t)
+        else:
+            adHocParam = 1/20
+            if m % 2 !=0 :
+                center= z0 + (adHocParam*np.ceil(m/2)*(1j))
+                radius = np.ceil(m/2)*adHocParam
+                def paramCurve(t):
+                    return center + radius*np.cos(t)+ radius*np.sin(t)*(1j)
+            else:
+                center = z0 - adHocParam*((m/2))*(1j)
+                radius = ((m/2))*adHocParam 
+                def paramCurve(t):
+                    return center - radius*np.cos(t)-radius*np.sin(t)*(1j)
         return paramCurve
         
     
     def CurveFormthArrow(self,initPt,finalPt,m): #the inputs are pairs (length-2 lists) of real numbers, and a non-negative integer
-        interval = np.linspace(0,np.pi,50)
+        if initPt != finalPt:
+            interval = np.linspace(0,np.pi,50)
+        else:
+            interval = np.linspace(0,2*np.pi,100)
         curveAsFunction = self.CurveFormthArrowAsAFunction(initPt,finalPt,m)
         return curveAsFunction(interval)
         
@@ -72,15 +88,29 @@ class quiver:
     def TipFormthArrow(self,initPt,finalPt,m): # the inputs are pairs (length-2 lists) of real numbers, and a non-negative integers
         z0, z1 = self.Plane.coordsR2ToC(initPt), self.Plane.coordsR2ToC(finalPt)
         evaluationPointForTip = 0.525*np.pi #in the interval 0-pi
-        if m == 0:
-            position = [(z0 + evaluationPointForTip*(z1-z0)/np.pi).real, (z0 + evaluationPointForTip*(z1-z0)/np.pi).imag]
-            angle = 180 - self.Plane.angleRadiansToDegrees(z1-z0)
-        elif m >0 :
+        if z0 != z1:
+            if m == 0:
+                position = [(z0 + evaluationPointForTip*(z1-z0)/np.pi).real, (z0 + evaluationPointForTip*(z1-z0)/np.pi).imag]
+                angle = 180 - self.Plane.angleRadiansToDegrees(z1-z0)
+            elif m >0 :
+                position = [self.CurveFormthArrowAsAFunction(initPt,finalPt,m)(evaluationPointForTip).real,self.CurveFormthArrowAsAFunction(initPt,finalPt,m)(evaluationPointForTip).imag]
+                halfdifference =(z0-z1)/2
+                adHocParam = 1/3
+                tangentVector = (halfdifference * (-np.sin(evaluationPointForTip))) + (m * halfdifference *(1j) * adHocParam * np.cos(evaluationPointForTip))
+                angle = 180-self.Plane.angleRadiansToDegrees(tangentVector)
+        else: 
             position = [self.CurveFormthArrowAsAFunction(initPt,finalPt,m)(evaluationPointForTip).real,self.CurveFormthArrowAsAFunction(initPt,finalPt,m)(evaluationPointForTip).imag]
-            halfdifference =(z0-z1)/2
-            adHocParam = 1/3
-            tangentVector = (halfdifference * (-np.sin(evaluationPointForTip))) + (m * halfdifference *(1j) * adHocParam * np.cos(evaluationPointForTip))
-            angle = 180-self.Plane.angleRadiansToDegrees(tangentVector)
+            adHocParam = 1/20
+            if m % 2 !=0 :
+                #center= z0 + (adHocParam*np.ceil(m/2)*(1j))
+                radius = np.ceil(m/2)*adHocParam
+                tangentVector =  radius*(-np.sin(evaluationPointForTip))+ radius*np.cos(evaluationPointForTip)*(1j)
+                angle = 180-self.Plane.angleRadiansToDegrees(tangentVector)
+            else:
+                #center = z0 - adHocParam*((m/2))*(1j)
+                radius = ((m/2))*adHocParam 
+                tangentVector = radius*(np.sin(evaluationPointForTip))-radius*np.cos(evaluationPointForTip)*(1j)
+                angle = 180-self.Plane.angleRadiansToDegrees(tangentVector)
         dictionary = {"pos":position,"angle":angle}
         return dictionary
         
