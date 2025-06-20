@@ -1,12 +1,11 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
 Created on Fri Aug  5 11:52:02 2022
 
 @author: caesar
 """
 
-from PyQt5 import QtGui, QtWidgets
+from PyQt5 import QtWidgets
 #from PyQt5.QtCore import *
 #from PyQt5.QtGui import *
 import sys
@@ -16,7 +15,6 @@ import numpy
 import pyqtgraph as pg
 from pyqtgraph.Qt import QtCore
 
-from pyqtgraph.ptime import time
 
 #### FOR 3D drawings
 #import pyqtgraph.opengl as gl
@@ -27,7 +25,7 @@ import draggableDots as dD
 import drawingQuivers
 import unicodeEncoding as uni
 
-PositionsOfVertices = [] # members of this list will have the form {'pos':[x,y]} 
+PositionsOfVertices = [] # members of this list will have the form {'pos':[x,y]}
 edgesDrawn = []
 selectedVertices = []
 selectedEdges = []
@@ -41,41 +39,36 @@ storageRoom = [PositionsOfVertices,edgesDrawn,selectedEdges,pathBeingFormed,path
 
 
 class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
-    
+
     def __init__(self, parent=None):
-        super(MainWindow,self).__init__(parent=parent)
+        super().__init__(parent=parent)
         self.setupUi(self)
-        
-        
+
+
         self.timer = None # in some animations it will become QtCore.QTimer(self)
-        
+
         self.quiverInfo = drawingQuivers.quiver()
         self.adjMatrix = numpy.array([])
-        
-        
-        
+
         #self.graphicsView_QuiverCanvas.setYRange(-1,1)
-        
+
         #self.graphicsView_QuiverCanvas.setLimits(xMin=-5,xMax=5,yMin=-5,yMax=5)
         self.graphicsView_QuiverCanvas.disableAutoRange()
 #        self.graphicsView_2.setYRange(self.CP_ylim_down,self.CP_ylim_up)
         self.graphicsView_QuiverCanvas.setAspectLocked(1.0)
         self.graphicsView_QuiverCanvas.hideAxis("left")
         self.graphicsView_QuiverCanvas.hideAxis("bottom")
-        
-        
+
         self.quiverVertices = dD.draggableDot()
         self.quiverVertices.setData(pen =self.quiverVertices.vertexPen, brush=self.quiverVertices.vertexBrush)
         self.graphicsView_QuiverCanvas.addItem(self.quiverVertices)
-        
+
         self.tableWidget_coeffsAndPathsForRel.setData(numpy.array([("","")],dtype=[("Coeff",object),("Path",object)]))
         self.tableWidget_coeffsAndPathsForRel.setColumnWidth(0,55)
         self.tableWidget_coeffsAndPathsForRel.setColumnWidth(1,340)
-        self.tableWidget_coeffsAndPathsForRel.setRowCount(0) #self.tableWidget_coeffsAndPathsForRel.removeRow(0) 
+        self.tableWidget_coeffsAndPathsForRel.setRowCount(0) #self.tableWidget_coeffsAndPathsForRel.removeRow(0)
         self.tableWidget_coeffsAndPathsForRel.setSortingEnabled(False)
-        
-        
-        
+
         self.pushButton_PathsLeftToRight.clicked.connect(self.effectOf_pushButton_PathsLeftToRight)
         self.pushButton_PathsRightToLeft.clicked.connect(self.effectOf_pushButton_PathsRightToLeft)
         self.pushButton_deleteSelectedRecordedPaths.clicked.connect(self.effectOf_pushButton_deleteSelectedRecordedPaths)
@@ -84,44 +77,41 @@ class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
         self.buttonGroup_radioButtons_drawQuiver_recordPathsAndRels.buttonToggled.connect(self.effectOf_buttonGroup_radioButtons_drawQuiver_recordPathsAndRels)
 
         self.graphicsView_QuiverCanvas.scene().sigMouseClicked.connect(self.quiverConstruction)
-        
+
         #self.quiverVertices.hovered.hover.connect(self.vertexIsHovered)
         self.quiverVertices.Dot.moved.connect(self.moveQuiverAround)
-        
+
 #        self.quiverVertices.scatter.sigClicked.connect(self.vertexHasBeenClicked)
-                
+
         self.pushButton_DeleteQuiver.clicked.connect(self.effectOf_pushButton_DeleteQuiver)
-        
-#    def vertexHasBeenClicked(self,ev):
- #       ev.setData(brush="r")      
-        
- 
+
+#    def vertexHasBeenClicked(self, ev):
+ #       ev.setData(brush="r")
+
     def effectOf_pushButton_PathsLeftToRight(self):
         directionOfPaths.append("LtoR")
-    
+
     def effectOf_pushButton_PathsRightToLeft(self):
         directionOfPaths.append("RtoL")
- 
+
     def effectOf_pushButton_DeleteQuiver(self):
         if self.timer:
             self.timer.stop()
             self.timer.deleteLater()
             self.timer = None
-        
-        self.graphicsView_QuiverCanvas.setAspectLocked(1.0)      
+
+        self.graphicsView_QuiverCanvas.setAspectLocked(1.0)
         self.quiverVertices.setData(pos=numpy.array([[0,-100]]))
         self.graphicsView_QuiverCanvas.clear()
         self.graphicsView_QuiverCanvas.addItem(self.quiverVertices)
         for infoStored in storageRoom:
             infoStored.clear()
         self.adjMatrix = numpy.array([])
-        
-        
-        
-    def vertexIsHovered(self,ev):
+
+    def vertexIsHovered(self, ev):
         print("indeed")
-        
-    def quiverConstruction(self,ev):
+
+    def quiverConstruction(self, ev):
         global PositionsOfVertices
         global edgesDrawn
         global selectedVertices
@@ -130,15 +120,15 @@ class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
         if len(directionOfPaths) == 0:
             pass
         else:
-            if self.radioButton_DrawQuiver.isChecked() == True:
-            
+            if self.radioButton_DrawQuiver.isChecked() is True:
+
                 x = self.graphicsView_QuiverCanvas.plotItem.vb.mapSceneToView(ev.scenePos()).x()
                 y = self.graphicsView_QuiverCanvas.plotItem.vb.mapSceneToView(ev.scenePos()).y()
-                
-                
-                if ev.double() == True:
+
+
+                if ev.double() is True:
                     selectedVertices.clear()
-                    
+
                     if len(self.adjMatrix) > 0:
                         newZeroColumn = numpy.array([[0] for l in range(len(self.adjMatrix))])
                         newZeroRow = numpy.array([[0 for l in range(len(self.adjMatrix)+1)]])
@@ -146,37 +136,37 @@ class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
                         self.adjMatrix = numpy.vstack((self.adjMatrix,newZeroRow))
                     if len(self.adjMatrix)==0:
                         self.adjMatrix = numpy.array([[0]])
-        
-                    
+
+
                     PositionsOfVertices.append({'pos':[x,y]})
                     points = numpy.array([[PositionsOfVertices[k]['pos'][0],PositionsOfVertices[k]['pos'][1]] for k in range(len(PositionsOfVertices))],dtype=float)
                     quiverProperties = drawingQuivers.quiver()
                     vertexLabels = ["%d" % i for i in range(len(PositionsOfVertices))]
                     self.quiverVertices.setData(pos=points, size=quiverProperties.vertexRadius, pxMode=True, text=vertexLabels)
                     #print(self.quiverVertices.scatter.data.tolist())
-                
-                
-                
-                if len(selectedVertices) < 2 and self.quiverVertices.mypoint_index != None:
+
+
+
+                if len(selectedVertices) < 2 and self.quiverVertices.mypoint_index is not None:
                     selectedVertices.append(self.quiverVertices.mypoint_index)
                     symbolBrushs = [None] * len(self.quiverVertices.vertexPositions)
                     print(selectedVertices)
-                    for vertex in selectedVertices: 
+                    for vertex in selectedVertices:
                         symbolBrushs[vertex] = pg.mkBrush(color='c')#pg.mkBrush(color=(255, 0, 0))
                     vertexLabels = ["%d" % i for i in range(len(self.quiverVertices.mydata_list))]
                     self.quiverVertices.setData(pos=self.quiverVertices.newPos, symbolBrush=symbolBrushs,text=vertexLabels)
                     print(selectedVertices)
-                
+
                 roundedVertexPositions = [[round(vertex[0],1),round(vertex[1],1)] for vertex in self.quiverVertices.vertexPositions]  # 1=one decimal digit accuracy
                 roundedxy = [round(x,1),round(y,1)]
-                if len(selectedVertices) == 1 and self.quiverVertices.mypoint_index != None and roundedxy not in roundedVertexPositions :
+                if len(selectedVertices) == 1 and self.quiverVertices.mypoint_index is not None and roundedxy not in roundedVertexPositions :
                     selectedVertices.clear()
                     points = numpy.array([[PositionsOfVertices[k]['pos'][0],PositionsOfVertices[k]['pos'][1]] for k in range(len(PositionsOfVertices))],dtype=float)
                     quiverProperties = drawingQuivers.quiver()
                     vertexLabels = ["%d" % i for i in range(len(PositionsOfVertices))]
                     self.quiverVertices.setData(pos=points, size=quiverProperties.vertexRadius, pxMode=True, text=vertexLabels,pen =self.quiverVertices.vertexPen, brush=self.quiverVertices.vertexBrush)
-                   
-                if len(selectedVertices) == 2 and self.quiverVertices.mypoint_index != None:
+
+                if len(selectedVertices) == 2 and self.quiverVertices.mypoint_index is not None:
                     i = selectedVertices[0]
                     j = selectedVertices[1]
                     self.adjMatrix[i,j] = self.adjMatrix[i,j]+1
@@ -186,22 +176,22 @@ class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
                         self.graphicsView_QuiverCanvas.removeItem(edge[5])
                         self.graphicsView_QuiverCanvas.removeItem(edge[6])
                     edgesDrawn.clear()
-                    
+
                     for vertex1 in self.quiverVertices.vertexPositions:
                         index1 = self.quiverVertices.vertexPositions.index(vertex1)
                         for vertex2 in self.quiverVertices.vertexPositions:
                             index2 = self.quiverVertices.vertexPositions.index(vertex2)
                             if index1 != index2:
-                                if self.adjMatrix[index1,index2]>0:
+                                if self.adjMatrix[index1,index2] > 0:
                                     for arrowIndex in range(self.adjMatrix[index1,index2]):
-                                        
+
                                         curve = drawingQuivers.quiver().CurveFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))
                                         x_coord, y_coord = curve.real, curve.imag
                                         drawing = pg.PlotCurveItem(x_coord,y_coord,pen=self.quiverVertices.arrowPen,clickable=True)
                                         arrowTip = pg.ArrowItem(pos = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"], angle = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["angle"], tipAngle = drawingQuivers.quiver().tipAngle, baseAngle = drawingQuivers.quiver().baseAngle, headLen = drawingQuivers.quiver().headLen, tailLen = drawingQuivers.quiver().tailLen, tailWidth = None, pen =self.quiverVertices.arrowPen, brush = 'r')
                                         self.graphicsView_QuiverCanvas.addItem(drawing)
                                         self.graphicsView_QuiverCanvas.addItem(arrowTip)
-                                        
+
                                         epsilon = 0.000000000001
                                         x = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0]+epsilon]
                                         y = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1]+epsilon]
@@ -221,12 +211,12 @@ class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
                                         text3.setParentItem(curvePoint)
             #                            curvePoint.setPos(drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1])
                                         self.graphicsView_QuiverCanvas.addItem(phantomCurveForAnchoringText)
-                                        
+
                                         edgesDrawn.append([index1,index2,arrowIndex,drawing,phantomCurveForAnchoringText,curvePoint,arrowTip])
-                                        
-                                        
+
+
                             else:
-                                if self.adjMatrix[index1,index2]>0:
+                                if self.adjMatrix[index1,index2] > 0:
                                     for arrowIndex in range(self.adjMatrix[index1,index2]):
                                         curve = drawingQuivers.quiver().CurveFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))
                                         x_coord, y_coord = curve.real, curve.imag
@@ -234,7 +224,7 @@ class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
                                         arrowTip = pg.ArrowItem(pos = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"], angle = drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["angle"], tipAngle = drawingQuivers.quiver().tipAngle, baseAngle = drawingQuivers.quiver().baseAngle, headLen = drawingQuivers.quiver().headLen, tailLen = drawingQuivers.quiver().tailLen, tailWidth = None, pen =self.quiverVertices.arrowPen, brush = 'r')
                                         self.graphicsView_QuiverCanvas.addItem(drawnCurve)
                                         self.graphicsView_QuiverCanvas.addItem(arrowTip)
-                                        
+
                                         epsilon = 0.000000000001
                                         x = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][0]+epsilon]
                                         y = [drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1],drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1]+epsilon]
@@ -254,22 +244,22 @@ class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
                                         text3.setParentItem(pointOnPhantomCurve)
             #                            pointOnPhantomCurve.setPos(drawingQuivers.quiver().TipFormthArrow(vertex1,vertex2,arrowIndex+numpy.sign(self.adjMatrix[index2,index1]))["pos"][1])
                                         self.graphicsView_QuiverCanvas.addItem(phantomCurveForAnchoringText)
-                                        
+
                                         edgesDrawn.append([index1,index2,arrowIndex,drawnCurve,phantomCurveForAnchoringText,pointOnPhantomCurve,arrowTip])
                                         # each edge in edgesDrawn has the form edge=[index1,index2,arrowIndex,drawnCurve,phantomCurveForAnchoringText,pointOnPhantomCurve,arrowTip]
-                                        
-                                        
+
+
                     for edge in edgesDrawn:
-                        edge[3].sigClicked.connect(self.edgeClicked)                   
+                        edge[3].sigClicked.connect(self.edgeClicked)
                     self.graphicsView_QuiverCanvas.removeItem(self.quiverVertices)
                     self.graphicsView_QuiverCanvas.addItem(self.quiverVertices)
                     selectedVertices.clear()
-            
+
                     #self.quiverVertices.selectedVertices.clear()
-                    
+
                 #print(self.adjMatrix)
                 #print(len(self.adjMatrix))
-                    
+
                     def update():
                         points = numpy.array([[PositionsOfVertices[k]['pos'][0],PositionsOfVertices[k]['pos'][1]] for k in range(len(PositionsOfVertices))],dtype=float)
                         quiverProperties = drawingQuivers.quiver()
@@ -277,16 +267,16 @@ class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
                         print("done waiting")
                         self.quiverVertices.setData(pos=points, size=quiverProperties.vertexRadius, pxMode=True, text=vertexLabels,pen =self.quiverVertices.vertexPen, brush=self.quiverVertices.vertexBrush)
                         self.timer.stop()
-                        
+
                     if self.timer:
                         self.timer.stop()
                         self.timer.deleteLater()
                     self.timer = QtCore.QTimer(self)
                     self.timer.timeout.connect(update)
                     self.timer.start(500)
-            
-    def edgeClicked(self,edge):
-        if self.radioButton_DrawQuiver.isChecked() == True:
+
+    def edgeClicked(self, edge):
+        if self.radioButton_DrawQuiver.isChecked() is True:
             selectedEdges.clear()
             for e in edgesDrawn:
                 if e[3] is edge:
@@ -296,58 +286,43 @@ class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
                 else:
                     e[3].setPen(self.quiverVertices.arrowPen)
                     e[6].setStyle(brush='r',pen='r')
-        if self.radioButton_RecordPathsAndRelations.isChecked() == True:
+        if self.radioButton_RecordPathsAndRelations.isChecked() is True:
             self.quiverVertices.selectedVertices.clear()
             #selectedEdges.clear()
             for e in edgesDrawn:
                 if e[3] is edge and directionOfPaths[0] == "RtoL":
-                    if len(pathBeingFormed)>0 and e[1]!=pathBeingFormed[-1][0]:
+                    if len(pathBeingFormed) > 0 and e[1] != pathBeingFormed[-1][0]:
                         pass
-                        
-                    if len(pathBeingFormed)>0 and e[1]==pathBeingFormed[-1][0]:
+
+                    if len(pathBeingFormed) > 0 and e[1] == pathBeingFormed[-1][0]:
                         pathBeingFormed.append(e)
                         e[3].setPen('w',width=10)
                         e[6].setStyle(brush='w',pen='w')
-                        #selectedEdges.append(e) 
-                        
+                        #selectedEdges.append(e)
+
                     if len(pathBeingFormed)==0:
                         pathBeingFormed.append(e)
                         e[3].setPen('w',width=10)
                         e[6].setStyle(brush='w',pen='w')
                         #selectedEdges.append(e)
-                    
+
                 elif e[3] is edge and directionOfPaths[0] == "LtoR":
-                    if len(pathBeingFormed)>0 and e[0]!=pathBeingFormed[-1][1]:
+                    if pathBeingFormed and e[0] != pathBeingFormed[-1][1]:
                         pass
-                        
-                    if len(pathBeingFormed)>0 and e[0]==pathBeingFormed[-1][1]:
+
+                    if pathBeingFormed and e[0] == pathBeingFormed[-1][1]:
                         pathBeingFormed.append(e)
                         e[3].setPen('w',width=10)
                         e[6].setStyle(brush='w',pen='w')
-                        #selectedEdges.append(e) 
-                        
+                        #selectedEdges.append(e)
+
                     if len(pathBeingFormed)==0:
                         pathBeingFormed.append(e)
                         e[3].setPen('w',width=10)
                         e[6].setStyle(brush='w',pen='w')
                         #selectedEdges.append(e)
-            
-                
 
-
-
-        
-        
-
-                            
-                            
-
-            
-            
-
-
-    
-    def moveQuiverAround(self,pt,ind):
+    def moveQuiverAround(self, pt, ind):
         global PositionsOfVertices
         global edgesDrawn
         PositionsOfVertices[ind] = {'pos':[pt[0],pt[1]]}
@@ -358,17 +333,17 @@ class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
                 index1 = edge[0]
                 index2 = edge[1]
                 k = edge[2]
-        
+
                 self.graphicsView_QuiverCanvas.removeItem(edge[6])
                 newTipPos = drawingQuivers.quiver().TipFormthArrow(PositionsOfVertices[index1]['pos'],PositionsOfVertices[index2]['pos'],k+numpy.sign(self.adjMatrix[index2,index1]))["pos"]
                 newTipAngle = drawingQuivers.quiver().TipFormthArrow(PositionsOfVertices[index1]['pos'],PositionsOfVertices[index2]['pos'],k+numpy.sign(self.adjMatrix[index2,index1]))["angle"]
                 edge[6] = pg.ArrowItem(pos = newTipPos, angle = newTipAngle, tipAngle = drawingQuivers.quiver().tipAngle, baseAngle = drawingQuivers.quiver().baseAngle, headLen = drawingQuivers.quiver().headLen, tailLen = drawingQuivers.quiver().tailLen, tailWidth = None, pen =self.quiverVertices.arrowPen, brush = 'r')
                 self.graphicsView_QuiverCanvas.addItem(edge[6])
-                
+
                 curve = drawingQuivers.quiver().CurveFormthArrow(PositionsOfVertices[edge[0]]['pos'],PositionsOfVertices[edge[1]]['pos'],k+numpy.sign(self.adjMatrix[index2,index1]))
                 x_coord, y_coord = curve.real, curve.imag
                 edge[3].setData(x_coord,y_coord,pen=self.quiverVertices.arrowPen)
-                
+
                 epsilon = 0.000000000001
                 vertex1 = PositionsOfVertices[edge[0]]['pos']
                 vertex2 = PositionsOfVertices[edge[1]]['pos']
@@ -381,11 +356,11 @@ class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
 
         self.graphicsView_QuiverCanvas.removeItem(self.quiverVertices)
         self.graphicsView_QuiverCanvas.addItem(self.quiverVertices)
-        
-    def keyPressEvent(self,event):
+
+    def keyPressEvent(self, event):
         global PositionsOfVertices
         global pathsFormedReadable
-        if self.radioButton_DrawQuiver.isChecked() == True:
+        if self.radioButton_DrawQuiver.isChecked() is True:
             if event.key() == 16777219:# 16777219 is the DELETE key
                 print("delete key pressed")
                 for edge in selectedEdges:
@@ -414,15 +389,14 @@ class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
                             self.graphicsView_QuiverCanvas.removeItem(arrow[5])
                             self.graphicsView_QuiverCanvas.removeItem(arrow[6])
                             edgesDrawn.remove(arrow)
-                    
-                    edge[3].setPen(self.quiverVertices.arrowPen)
-                    edge[6].setStyle(brush='r',pen='r')
-                    self.adjMatrix[i,j] = self.adjMatrix[i,j]-1    
-                    selectedEdges.remove(edge)
-    
 
-        if self.radioButton_RecordPathsAndRelations.isChecked() == True:
-            if event.key() == 16777220 and len(pathBeingFormed)>0: #16777220 is the ENTER key:
+                    edge[3].setPen(self.quiverVertices.arrowPen)
+                    edge[6].setStyle(brush='r', pen='r')
+                    self.adjMatrix[i, j] = self.adjMatrix[i, j] - 1
+                    selectedEdges.remove(edge)
+
+        if self.radioButton_RecordPathsAndRelations.isChecked() is True:
+            if event.key() == 16777220 and len(pathBeingFormed) > 0:  #16777220 is the ENTER key:
                 #path = [[edge[0],edge[1],edge[2]] for edge in pathBeingFormed]
                 if directionOfPaths[0] == "LtoR":
                     pathReadableAsList = ["a"+ uni.sup(str(edge[0])+"-"+str(edge[1]))+uni.sub(edge[2]) for edge in pathBeingFormed]
@@ -436,7 +410,7 @@ class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
                         pathReadableAsString = pathReadableAsString + " • " + arrow
                 self.listWidget_RecordedPaths.addItem(pathReadableAsString)
                 pathsFormedReadable.append(pathReadableAsString)
-                auxTempList = [path for path in pathBeingFormed]
+                auxTempList = list(pathBeingFormed)
                 pathsFormed.append(auxTempList)
                 pathBeingFormed.clear()
                 for e in edgesDrawn:
@@ -444,7 +418,7 @@ class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
                     e[6].setStyle(brush='r',pen='r')
                 #print("Paths formed"+str(pathsFormed))
                 #print("Paths formed : "+str(pathsFormedReadable))
-                
+
         if event.key() == 16777216: # 16777216 is the ESCAPE key
             selectedVertices.clear()
             selectedEdges.clear()
@@ -452,35 +426,38 @@ class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
             points = numpy.array([[PositionsOfVertices[k]['pos'][0],PositionsOfVertices[k]['pos'][1]] for k in range(len(PositionsOfVertices))],dtype=float)
             quiverProperties = drawingQuivers.quiver()
             vertexLabels = ["%d" % i for i in range(len(PositionsOfVertices))]
-            self.quiverVertices.setData(pos=points, size=quiverProperties.vertexRadius, pxMode=True, text=vertexLabels,pen =self.quiverVertices.vertexPen, brush=self.quiverVertices.vertexBrush)
+            self.quiverVertices.setData(pos=points,
+                                        size=quiverProperties.vertexRadius,
+                                        pxMode=True, text=vertexLabels,
+                                        pen=self.quiverVertices.vertexPen,
+                                        brush=self.quiverVertices.vertexBrush)
             for e in edgesDrawn:
                 e[3].setPen(self.quiverVertices.arrowPen)
-                e[6].setStyle(brush='r',pen='r')
-                
+                e[6].setStyle(brush='r', pen='r')
+
         #if event.key() == 16777249: # 16777249 is the COMMAND key in Mac, CONTROL key in Linux
          #   print("control")
-        
 
     def effectOf_buttonGroup_radioButtons_drawQuiver_recordPathsAndRels(self):
         selectedVertices.clear()
         selectedEdges.clear()
         pathBeingFormed.clear()
-        points = numpy.array([[PositionsOfVertices[k]['pos'][0],PositionsOfVertices[k]['pos'][1]] for k in range(len(PositionsOfVertices))],dtype=float)
+        points = numpy.array([[PositionsOfVertices[k]['pos'][0], PositionsOfVertices[k]['pos'][1]] for k in range(len(PositionsOfVertices))], dtype=float)
         quiverProperties = drawingQuivers.quiver()
         vertexLabels = ["%d" % i for i in range(len(PositionsOfVertices))]
-        self.quiverVertices.setData(pos=points, size=quiverProperties.vertexRadius, pxMode=True, text=vertexLabels,pen =self.quiverVertices.vertexPen, brush=self.quiverVertices.vertexBrush)
+        self.quiverVertices.setData(pos=points,
+                                    size=quiverProperties.vertexRadius,
+                                    pxMode=True, text=vertexLabels,
+                                    pen=self.quiverVertices.vertexPen,
+                                    brush=self.quiverVertices.vertexBrush)
         for e in edgesDrawn:
             e[3].setPen(self.quiverVertices.arrowPen)
             e[6].setStyle(brush='r',pen='r')
-        
-        
-            
-            
+
     def effectOf_pushButton_deleteSelectedRecordedPaths(self):
         for path in self.listWidget_RecordedPaths.selectedItems():
             self.listWidget_RecordedPaths.takeItem(self.listWidget_RecordedPaths.row(path))
-            
-        
+
     def effectOf_pushButton_AddPathToFormRelation(self):
         rowCountSelected = len(self.listWidget_RecordedPaths.selectedItems())
         #self.tableWidget_coeffsAndPathsForRel.setRowCount(rowCountSelected)
@@ -491,21 +468,17 @@ class MainWindow(QtWidgets.QMainWindow, GUI_Window.Ui_MainWindow):
         self.tableWidget_coeffsAndPathsForRel.setColumnWidth(0,55)
         self.tableWidget_coeffsAndPathsForRel.setColumnWidth(1,285)
         #print("printing" + str(self.tableWidget_coeffsAndPathsForRel.item(rowCountSelected-1,1).text()))    #THIS IS HOW ONE EXTRACTS THE TEXT FROM A TABLE ITEM
-        
-        
+
+
         for k in range(rowCountSelected):
             item = self.tableWidget_coeffsAndPathsForRel.item(self.tableWidget_coeffsAndPathsForRel.rowCount()-(k+1),0)
             item.setFlags(item.flags() | QtCore.Qt.ItemIsEditable)
-            
-            
-        
-            
-            
+
     def effectOf_pushButton_deleteSelectedRowInRelationBeingFormed(self):
         for selectedRow in self.tableWidget_coeffsAndPathsForRel.selectedItems():
             self.tableWidget_coeffsAndPathsForRel.removeRow(selectedRow.row())
-        
-            
+
+
 
 
 ## The following fixes the "has no attribute 'setCentralWidget' error
